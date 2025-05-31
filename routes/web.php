@@ -10,7 +10,6 @@ use App\Http\Controllers\KeuanganController;
 use App\Http\Controllers\AnggotaJadwalController;
 
 
-//testing chandra
 /*
 |--------------------------------------------------------------------------
 | Landing Page (Umum)
