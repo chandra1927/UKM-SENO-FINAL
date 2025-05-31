@@ -21,22 +21,22 @@ class AnggotaJadwalController extends Controller
     // ================================
 
     public function event()
-{
-    $jadwalEvents = JadwalEvent::all();
-    return view('anggota.event', compact('jadwalEvents'));
-}
+    {
+        $jadwalEvents = JadwalEvent::all();
+        return view('anggota.event', compact('jadwalEvents'));
+    }
 
-public function latihan()
-{
-    $jadwalLatihans = JadwalLatihan::all();
-    return view('anggota.latihan', compact('jadwalLatihans'));
-}
+    public function latihan()
+    {
+        $jadwalLatihans = JadwalLatihan::all();
+        return view('anggota.latihan', compact('jadwalLatihans'));
+    }
 
-public function rapat()
-{
-    $jadwalRapats = JadwalRapat::all();
-    return view('anggota.rapat', compact('jadwalRapats'));
-}
+    public function rapat()
+    {
+        $jadwalRapats = JadwalRapat::all();
+        return view('anggota.rapat', compact('jadwalRapats'));
+    }
 
     // ================================
     // CRUD Biodata
@@ -66,7 +66,7 @@ public function rapat()
             'posisi' => $request->posisi,
         ]);
 
-        return redirect()->route('anggota.index')->with('success', 'Biodata berhasil disimpan');
+        return redirect()->route('anggota.biodata.index')->with('success', 'Biodata berhasil disimpan');
     }
 
     public function editBiodata(Biodata $biodata)
@@ -110,6 +110,9 @@ public function rapat()
     public function indexBiodata()
     {
         $biodata = Biodata::where('user_id', auth()->id())->first();
+        if (!$biodata) {
+            return redirect()->route('anggota.biodata.create')->with('warning', 'Biodata belum diisi. Silakan isi biodata Anda.');
+        }
         return view('anggota.biodata.index', compact('biodata'));
     }
 }

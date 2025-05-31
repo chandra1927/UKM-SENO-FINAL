@@ -144,7 +144,7 @@ Route::middleware(['auth', 'role:customer'])->group(function () {
 | Anggota - Lihat Jadwal & Biodata
 |--------------------------------------------------------------------------
 */
-Route::middleware(['auth', 'role:anggota', 'biodata.required'])
+Route::middleware(['auth', 'role:anggota'])
      ->prefix('anggota')
      ->name('anggota.')
      ->group(function () {

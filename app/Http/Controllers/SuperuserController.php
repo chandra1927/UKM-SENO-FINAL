@@ -72,7 +72,7 @@ class SuperuserController extends Controller
     public function editAnggota($id)
     {
         $members = User::where('role', 'anggota')->findOrFail($id);
-        return view('superuser.kelola-anggota.edit-anggota', compact('anggota'));
+        return view('superuser.kelola-anggota.edit', compact('members'));
     }
 
     public function updateAnggota(Request $request, $id)
@@ -109,7 +109,7 @@ class SuperuserController extends Controller
     public function editPasswordAnggota($id)
     {
         $members = User::where('role', 'anggota')->findOrFail($id);
-        return view('superuser.kelola-anggota.edit-password-anggota', compact('anggota'));
+        return view('superuser.kelola-anggota.edit-password-anggota', compact('members'));
     }
 
     public function updatePasswordAnggota(Request $request, $id)
@@ -118,9 +118,9 @@ class SuperuserController extends Controller
             'password' => 'required|string|min:6|confirmed',
         ]);
 
-        $anggota = User::where('role', 'anggota')->findOrFail($id);
-        $anggota->password = Hash::make($request->password);
-        $anggota->save();
+        $members = User::where('role', 'anggota')->findOrFail($id);
+        $members->password = Hash::make($request->password);
+        $members->save();
 
         return redirect()->route('superuser.kelola-anggota.index')->with('success', 'Password anggota berhasil diperbarui.');
     }
