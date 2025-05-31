@@ -10,7 +10,7 @@ use App\Http\Controllers\KeuanganController;
 use App\Http\Controllers\AnggotaJadwalController;
 
 
-viota adalah 
+chandra adalah
 /*
 |--------------------------------------------------------------------------
 | Landing Page (Umum)
