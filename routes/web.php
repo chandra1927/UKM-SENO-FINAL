@@ -66,6 +66,9 @@ Route::get('/keuangan', [KeuanganController::class, 'index'])
 | Superuser Section
 |--------------------------------------------------------------------------
 */
+
+ingpo harun chan 
+
 Route::middleware(['auth', 'role:superuser'])
      ->prefix('superuser')
      ->name('superuser.')
