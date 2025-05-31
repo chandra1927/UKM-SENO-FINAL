@@ -10,7 +10,7 @@ use App\Http\Controllers\KeuanganController;
 use App\Http\Controllers\AnggotaJadwalController;
 
 
-eheheh chandra eheheheh
+eheheh chandra eheheheh sdsds
 /*
 |--------------------------------------------------------------------------
 | Landing Page (Umum)
