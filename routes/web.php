@@ -9,6 +9,8 @@ use App\Http\Controllers\SuperuserController;
 use App\Http\Controllers\KeuanganController;
 use App\Http\Controllers\AnggotaJadwalController;
 
+
+
 /*
 |--------------------------------------------------------------------------
 | Landing Page (Umum)
@@ -66,6 +68,7 @@ Route::get('/keuangan', [KeuanganController::class, 'index'])
 | Superuser Section
 |--------------------------------------------------------------------------
 */
+
 Route::middleware(['auth', 'role:superuser'])
      ->prefix('superuser')
      ->name('superuser.')
