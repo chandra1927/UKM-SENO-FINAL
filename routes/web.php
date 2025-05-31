@@ -9,7 +9,7 @@ use App\Http\Controllers\SuperuserController;
 use App\Http\Controllers\KeuanganController;
 use App\Http\Controllers\AnggotaJadwalController;
 
-eheheheheheh
+
 
 /*
 |--------------------------------------------------------------------------
