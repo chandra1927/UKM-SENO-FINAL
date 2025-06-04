@@ -4,32 +4,35 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\User;
+use App\Models\Biodata;
 use App\Models\Bundle;
 use App\Models\JadwalEvent;
 use App\Models\JadwalLatihan;
 use App\Models\JadwalRapat;
+use App\Models\Order;
 use Illuminate\Support\Facades\Hash;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 class SuperuserController extends Controller
 {
-    // ====== Dashboard Superuser ======
-    public function index()
+    public function __construct()
     {
-        if (auth()->user()->role === 'superuser') {
-            return view('superuser.dashboard');
-        }
-        return redirect('/')->with('error', 'Unauthorized access');
+        $this->middleware('auth');
+        $this->middleware('role:superuser');
     }
 
-    // ====== Lihat Halaman Settings (Opsional) ======
+    public function index()
+    {
+        return view('superuser.dashboard');
+    }
+
     public function showSettings()
     {
         return view('superuser.settings');
     }
 
-    // ====== Lihat Data Anggota ======
     public function indexAnggota()
     {
         try {
@@ -45,7 +48,6 @@ class SuperuserController extends Controller
         }
     }
 
-    // ====== CRUD Anggota ======
     public function createAnggota()
     {
         return view('superuser.kelola-anggota.create-anggota');
@@ -54,78 +56,126 @@ class SuperuserController extends Controller
     public function storeAnggota(Request $request)
     {
         $request->validate([
-            'name'     => 'required|string|max:255',
-            'email'    => 'required|email|unique:users,email',
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:users,email',
             'password' => 'required|string|min:6|confirmed',
         ]);
 
-        User::create([
-            'name'     => $request->name,
-            'email'    => $request->email,
+        $user = User::create([
+            'name' => $request->name,
+            'email' => $request->email,
             'password' => Hash::make($request->password),
-            'role'     => 'anggota',
+            'role' => 'anggota',
         ]);
 
         return redirect()->route('superuser.kelola-anggota.index')->with('success', 'Anggota berhasil ditambahkan.');
     }
 
-    public function editAnggota($id)
+    public function editAnggota(User $member)
     {
-        $members = User::where('role', 'anggota')->findOrFail($id);
-        return view('superuser.kelola-anggota.edit', compact('members'));
+        if (!$member || $member->role !== 'anggota') {
+            abort(404, 'Anggota tidak ditemukan');
+        }
+        $member->load('biodata');
+        return view('superuser.kelola-anggota.edit', compact('member'));
     }
 
-    public function updateAnggota(Request $request, $id)
+    public function updateAnggota(Request $request, User $member)
     {
-        $members = User::where('role', 'anggota')->findOrFail($id);
-
-        $request->validate([
-            'name'     => 'required|string|max:255',
-            'email'    => 'required|email|unique:users,email,' . $members->id,
-            'password' => 'nullable|string|min:6|confirmed',
-        ]);
-
-        $members->name  = $request->name;
-        $members->email = $request->email;
-
-        if ($request->filled('password')) {
-            $members->password = Hash::make($request->password);
+        if (!$member || $member->role !== 'anggota') {
+            abort(404, 'Anggota tidak ditemukan');
         }
 
-        $members->save();
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:users,email,' . $member->id,
+            'password' => 'nullable|string|min:6|confirmed',
+            'nama_lengkap' => 'required|string|max:255',
+            'nim' => 'required|string|max:50|unique:biodatas,nim,' . ($member->biodata ? $member->biodata->id : ''),
+            'divisi' => 'required|string|max:100',
+            'angkatan' => 'required|string|max:10',
+            'posisi' => 'required|string|max:100',
+        ]);
+
+        $updated = $member->update([
+            'name' => $request->name,
+            'email' => $request->email,
+            'password' => $request->filled('password') ? Hash::make($request->password) : $member->password,
+        ]);
+
+        if ($updated) {
+            if ($member->biodata) {
+                $member->biodata->update([
+                    'nama_lengkap' => $request->nama_lengkap,
+                    'nim' => $request->nim,
+                    'divisi' => $request->divisi,
+                    'angkatan' => $request->angkatan,
+                    'posisi' => $request->posisi,
+                ]);
+            } else {
+                Biodata::create([
+                    'user_id' => $member->id,
+                    'nama_lengkap' => $request->nama_lengkap,
+                    'nim' => $request->nim,
+                    'divisi' => $request->divisi,
+                    'angkatan' => $request->angkatan,
+                    'posisi' => $request->posisi,
+                ]);
+            }
+        }
 
         return redirect()->route('superuser.kelola-anggota.index')->with('success', 'Anggota berhasil diperbarui.');
     }
 
-    public function destroyAnggota($id)
+    public function destroyAnggota(User $member)
     {
-        $members = User::where('role', 'anggota')->findOrFail($id);
-        $members->delete();
-
+        if (!$member || $member->role !== 'anggota') {
+            abort(404, 'Anggota tidak ditemukan');
+        }
+        $member->delete();
         return redirect()->route('superuser.kelola-anggota.index')->with('success', 'Anggota berhasil dihapus.');
     }
 
-    // ====== Password Anggota ======
-    public function editPasswordAnggota($id)
+    public function editPasswordAnggota(User $member)
     {
-        $members = User::where('role', 'anggota')->findOrFail($id);
-        return view('superuser.kelola-anggota.edit-password-anggota', compact('members'));
+        if (!$member || $member->role !== 'anggota') {
+            abort(404, 'Anggota tidak ditemukan');
+        }
+        return view('superuser.kelola-anggota.edit-password-anggota', compact('member'));
     }
 
-    public function updatePasswordAnggota(Request $request, $id)
+    public function updatePasswordAnggota(Request $request, User $member)
     {
+        if (!$member || $member->role !== 'anggota') {
+            abort(404, 'Anggota tidak ditemukan');
+        }
+
         $request->validate([
             'password' => 'required|string|min:6|confirmed',
         ]);
 
-        $members = User::where('role', 'anggota')->findOrFail($id);
-        $members->password = Hash::make($request->password);
-        $members->save();
+        $member->update([
+            'password' => Hash::make($request->password),
+        ]);
 
         return redirect()->route('superuser.kelola-anggota.index')->with('success', 'Password anggota berhasil diperbarui.');
     }
 
-    // ====== Search Anggota ======
+    public function kelolaPasswordAnggota()
+    {
+        try {
+            $members = User::where('role', 'anggota')->get();
+            if (!view()->exists('superuser.kelola-password')) {
+                Log::error('View superuser.kelola-password not found');
+                abort(404, 'Halaman Kelola Password Anggota tidak ditemukan');
+            }
+            return view('superuser.kelola-password', compact('members'));
+        } catch (\Exception $e) {
+            Log::error('Error rendering kelolaPasswordAnggota view: ' . $e->getMessage());
+            abort(500, 'Terjadi kesalahan saat memuat halaman Kelola Password Anggota');
+        }
+    }
+
     public function searchAnggota(Request $request)
     {
         $keyword = $request->keyword;
@@ -144,7 +194,6 @@ class SuperuserController extends Controller
         return view('superuser.kelola-anggota.index', compact('members'));
     }
 
-    // ====== Export Anggota PDF ======
     public function exportAnggota()
     {
         $members = User::where('role', 'anggota')->with('biodata')->get();
@@ -152,13 +201,6 @@ class SuperuserController extends Controller
         return $pdf->download('data-anggota.pdf');
     }
 
-    public function kelolaPasswordAnggota()
-    {
-        $members = User::where('role', 'anggota')->get();
-        return view('superuser.kelola-password', compact('members'));
-    }
-
-    // ====== Kelola Bundle ======
     public function kelolaBundle()
     {
         $bundles = Bundle::all();
@@ -167,18 +209,33 @@ class SuperuserController extends Controller
 
     public function createBundle()
     {
-        return view('superuser.kelola-bundle.create');
+        $members = User::where('role', 'anggota')->get();
+        return view('superuser.kelola-bundle.create', compact('members'));
     }
 
     public function storeBundle(Request $request)
     {
         $request->validate([
-            'nama_bundle' => 'required|string|max:255',
-            'deskripsi'   => 'nullable|string',
-            'jumlah_item' => 'required|integer|min:1',
+            'nama_paket' => 'required|string|max:255',
+            'isi_paket' => 'required|array|min:1',
+            'deskripsi' => 'nullable|string',
+            'harga' => 'required|numeric|min:0',
+            'video' => 'nullable|file|mimes:mp4|max:20480',
         ]);
 
-        Bundle::create($request->all());
+        $data = [
+            'nama_paket' => $request->nama_paket,
+            'isi_paket' => $request->isi_paket,
+            'deskripsi' => $request->deskripsi,
+            'harga' => $request->harga,
+        ];
+
+        if ($request->hasFile('video')) {
+            $videoPath = $request->file('video')->store('videos', 'public');
+            $data['video_path'] = $videoPath;
+        }
+
+        Bundle::create($data);
 
         return redirect()->route('superuser.kelola-bundle.index')->with('success', 'Bundle berhasil ditambahkan.');
     }
@@ -186,19 +243,38 @@ class SuperuserController extends Controller
     public function editBundle($id)
     {
         $bundle = Bundle::findOrFail($id);
-        return view('superuser.kelola-bundle.edit', compact('bundle'));
+        $members = User::where('role', 'anggota')->get();
+        return view('superuser.kelola-bundle.edit', compact('bundle', 'members'));
     }
 
     public function updateBundle(Request $request, $id)
     {
         $request->validate([
-            'nama_bundle' => 'required|string|max:255',
-            'deskripsi'   => 'nullable|string',
-            'jumlah_item' => 'required|integer|min:1',
+            'nama_paket' => 'required|string|max:255',
+            'isi_paket' => 'required|array|min:1',
+            'deskripsi' => 'nullable|string',
+            'harga' => 'required|numeric|min:0',
+            'video' => 'nullable|file|mimes:mp4|max:20480',
         ]);
 
         $bundle = Bundle::findOrFail($id);
-        $bundle->update($request->all());
+
+        $data = [
+            'nama_paket' => $request->nama_paket,
+            'isi_paket' => $request->isi_paket,
+            'deskripsi' => $request->deskripsi,
+            'harga' => $request->harga,
+        ];
+
+        if ($request->hasFile('video')) {
+            if ($bundle->video_path && Storage::disk('public')->exists($bundle->video_path)) {
+                Storage::disk('public')->delete($bundle->video_path);
+            }
+            $videoPath = $request->file('video')->store('videos', 'public');
+            $data['video_path'] = $videoPath;
+        }
+
+        $bundle->update($data);
 
         return redirect()->route('superuser.kelola-bundle.index')->with('success', 'Bundle berhasil diperbarui.');
     }
@@ -206,12 +282,14 @@ class SuperuserController extends Controller
     public function destroyBundle($id)
     {
         $bundle = Bundle::findOrFail($id);
+        if ($bundle->video_path && Storage::disk('public')->exists($bundle->video_path)) {
+            Storage::disk('public')->delete($bundle->video_path);
+        }
         $bundle->delete();
 
         return redirect()->route('superuser.kelola-bundle.index')->with('success', 'Bundle berhasil dihapus.');
     }
 
-    // ====== Kelola Jadwal Event ======
     public function kelolaJadwalEvent()
     {
         $jadwalEvents = JadwalEvent::all();
@@ -226,19 +304,19 @@ class SuperuserController extends Controller
     public function storeJadwalEvent(Request $request)
     {
         $request->validate([
-            'judul'       => 'required|string|max:255',
-            'deskripsi'   => 'nullable|string',
-            'tanggal'     => 'required|date',
-            'waktu'       => 'nullable|string',
-            'tempat'      => 'nullable|string',
+            'judul' => 'required|string|max:255',
+            'deskripsi' => 'nullable|string',
+            'tanggal' => 'required|date',
+            'waktu' => 'nullable|string',
+            'tempat' => 'nullable|string',
         ]);
 
         JadwalEvent::create([
-            'judul'       => $request->judul,
-            'deskripsi'   => $request->deskripsi,
-            'tanggal'     => $request->tanggal,
-            'waktu'       => $request->waktu,
-            'tempat'      => $request->tempat,
+            'judul' => $request->judul,
+            'deskripsi' => $request->deskripsi,
+            'tanggal' => $request->tanggal,
+            'waktu' => $request->waktu,
+            'tempat' => $request->tempat,
         ]);
 
         return redirect()->route('superuser.jadwal.event.index')->with('success', 'Jadwal event berhasil ditambahkan.');
@@ -253,20 +331,20 @@ class SuperuserController extends Controller
     public function updateJadwalEvent(Request $request, $id)
     {
         $request->validate([
-            'judul'       => 'required|string|max:255',
-            'deskripsi'   => 'nullable|string',
-            'tanggal'     => 'required|date',
-            'waktu'       => 'nullable|string',
-            'tempat'      => 'nullable|string',
+            'judul' => 'required|string|max:255',
+            'deskripsi' => 'nullable|string',
+            'tanggal' => 'required|date',
+            'waktu' => 'nullable|string',
+            'tempat' => 'nullable|string',
         ]);
 
         $jadwalEvent = JadwalEvent::findOrFail($id);
         $jadwalEvent->update([
-            'judul'       => $request->judul,
-            'deskripsi'   => $request->deskripsi,
-            'tanggal'     => $request->tanggal,
-            'waktu'       => $request->waktu,
-            'tempat'      => $request->tempat,
+            'judul' => $request->judul,
+            'deskripsi' => $request->deskripsi,
+            'tanggal' => $request->tanggal,
+            'waktu' => $request->waktu,
+            'tempat' => $request->tempat,
         ]);
 
         return redirect()->route('superuser.jadwal.event.index')->with('success', 'Jadwal event berhasil diperbarui.');
@@ -280,7 +358,6 @@ class SuperuserController extends Controller
         return redirect()->route('superuser.jadwal.event.index')->with('success', 'Jadwal event berhasil dihapus.');
     }
 
-    // ====== Kelola Jadwal Latihan ======
     public function kelolaJadwalLatihan()
     {
         $jadwalLatihans = JadwalLatihan::all();
@@ -295,21 +372,21 @@ class SuperuserController extends Controller
     public function storeJadwalLatihan(Request $request)
     {
         $request->validate([
-            'kegiatan'       => 'required|string|max:255',
-            'tanggal'        => 'required|date',
-            'waktu_mulai'    => 'nullable|string',
-            'waktu_selesai'  => 'nullable|string',
-            'tempat'         => 'nullable|string',
-            'catatan'        => 'nullable|string',
+            'kegiatan' => 'required|string|max:255',
+            'tanggal' => 'required|date',
+            'waktu_mulai' => 'nullable|string',
+            'waktu_selesai' => 'nullable|string',
+            'tempat' => 'nullable|string',
+            'catatan' => 'nullable|string',
         ]);
 
         JadwalLatihan::create([
-            'kegiatan'       => $request->kegiatan,
-            'tanggal'        => $request->tanggal,
-            'waktu_mulai'    => $request->waktu_mulai,
-            'waktu_selesai'  => $request->waktu_selesai,
-            'tempat'         => $request->tempat,
-            'catatan'        => $request->catatan,
+            'kegiatan' => $request->kegiatan,
+            'tanggal' => $request->tanggal,
+            'waktu_mulai' => $request->waktu_mulai,
+            'waktu_selesai' => $request->waktu_selesai,
+            'tempat' => $request->tempat,
+            'catatan' => $request->catatan,
         ]);
 
         return redirect()->route('superuser.jadwal.latihan.index')->with('success', 'Jadwal latihan berhasil ditambahkan.');
@@ -324,22 +401,22 @@ class SuperuserController extends Controller
     public function updateJadwalLatihan(Request $request, $id)
     {
         $request->validate([
-            'kegiatan'       => 'required|string|max:255',
-            'tanggal'        => 'required|date',
-            'waktu_mulai'    => 'nullable|string',
-            'waktu_selesai'  => 'nullable|string',
-            'tempat'         => 'nullable|string',
-            'catatan'        => 'nullable|string',
+            'kegiatan' => 'required|string|max:255',
+            'tanggal' => 'required|date',
+            'waktu_mulai' => 'nullable|string',
+            'waktu_selesai' => 'nullable|string',
+            'tempat' => 'nullable|string',
+            'catatan' => 'nullable|string',
         ]);
 
         $jadwalLatihan = JadwalLatihan::findOrFail($id);
         $jadwalLatihan->update([
-            'kegiatan'       => $request->kegiatan,
-            'tanggal'        => $request->tanggal,
-            'waktu_mulai'    => $request->waktu_mulai,
-            'waktu_selesai'  => $request->waktu_selesai,
-            'tempat'         => $request->tempat,
-            'catatan'        => $request->catatan,
+            'kegiatan' => $request->kegiatan,
+            'tanggal' => $request->tanggal,
+            'waktu_mulai' => $request->waktu_mulai,
+            'waktu_selesai' => $request->waktu_selesai,
+            'tempat' => $request->tempat,
+            'catatan' => $request->catatan,
         ]);
 
         return redirect()->route('superuser.jadwal.latihan.index')->with('success', 'Jadwal latihan berhasil diperbarui.');
@@ -353,7 +430,6 @@ class SuperuserController extends Controller
         return redirect()->route('superuser.jadwal.latihan.index')->with('success', 'Jadwal latihan berhasil dihapus.');
     }
 
-    // ====== Kelola Jadwal Rapat ======
     public function kelolaJadwalRapat()
     {
         $jadwalRapats = JadwalRapat::all();
@@ -368,19 +444,19 @@ class SuperuserController extends Controller
     public function storeJadwalRapat(Request $request)
     {
         $request->validate([
-            'agenda'      => 'required|string|max:255',
-            'tanggal'     => 'required|date',
-            'waktu'       => 'nullable|string',
-            'tempat'      => 'nullable|string',
-            'notulen'     => 'nullable|string',
+            'agenda' => 'required|string|max:255',
+            'tanggal' => 'required|date',
+            'waktu' => 'nullable|string',
+            'tempat' => 'nullable|string',
+            'notulen' => 'nullable|string',
         ]);
 
         JadwalRapat::create([
-            'agenda'      => $request->agenda,
-            'tanggal'     => $request->tanggal,
-            'waktu'       => $request->waktu,
-            'tempat'      => $request->tempat,
-            'notulen'     => $request->notulen,
+            'agenda' => $request->agenda,
+            'tanggal' => $request->tanggal,
+            'waktu' => $request->waktu,
+            'tempat' => $request->tempat,
+            'notulen' => $request->notulen,
         ]);
 
         return redirect()->route('superuser.jadwal.rapat.index')->with('success', 'Jadwal rapat berhasil ditambahkan.');
@@ -395,20 +471,20 @@ class SuperuserController extends Controller
     public function updateJadwalRapat(Request $request, $id)
     {
         $request->validate([
-            'agenda'      => 'required|string|max:255',
-            'tanggal'     => 'required|date',
-            'waktu'       => 'nullable|string',
-            'tempat'      => 'nullable|string',
-            'notulen'     => 'nullable|string',
+            'agenda' => 'required|string|max:255',
+            'tanggal' => 'required|date',
+            'waktu' => 'nullable|string',
+            'tempat' => 'nullable|string',
+            'notulen' => 'nullable|string',
         ]);
 
         $jadwalRapat = JadwalRapat::findOrFail($id);
         $jadwalRapat->update([
-            'agenda'      => $request->agenda,
-            'tanggal'     => $request->tanggal,
-            'waktu'       => $request->waktu,
-            'tempat'      => $request->tempat,
-            'notulen'     => $request->notulen,
+            'agenda' => $request->agenda,
+            'tanggal' => $request->tanggal,
+            'waktu' => $request->waktu,
+            'tempat' => $request->tempat,
+            'notulen' => $request->notulen,
         ]);
 
         return redirect()->route('superuser.jadwal.rapat.index')->with('success', 'Jadwal rapat berhasil diperbarui.');
@@ -422,7 +498,6 @@ class SuperuserController extends Controller
         return redirect()->route('superuser.jadwal.rapat.index')->with('success', 'Jadwal rapat berhasil dihapus.');
     }
 
-    // ====== Fitur-Fitur Lain ======
     public function kelolaPassword()
     {
         return view('superuser.kelola-anggota.password');
@@ -431,5 +506,20 @@ class SuperuserController extends Controller
     public function kelolaPaket()
     {
         return view('superuser.kelola-paket');
+    }
+
+    public function kelolaOrder()
+    {
+        try {
+            $orders = Order::with(['user', 'bundle'])->latest()->get();
+            if (!view()->exists('superuser.kelola-order.index')) {
+                Log::error('View superuser.kelola-order.index not found');
+                abort(404, 'Halaman Kelola Order tidak ditemukan');
+            }
+            return view('superuser.kelola-order.index', compact('orders'));
+        } catch (\Exception $e) {
+            Log::error('Error rendering kelolaOrder view: ' . $e->getMessage());
+            abort(500, 'Terjadi kesalahan saat memuat halaman Kelola Order');
+        }
     }
 }

@@ -29,11 +29,19 @@
             <i class="fas fa-crown text-yellow-300"></i>
             <span>Superuser Panel</span>
         </div>
+        
         <nav class="flex-1 p-6 space-y-3" x-data="{
             openKelolaAnggota: false,
             openKelolaJadwal: false,
             openKelolaPaket: false
         }">
+        <nav class="flex-1 p-4 space-y-2">
+            <!-- Dashboard -->
+            <a href="{{ route('superuser.dashboard') }}"
+               class="flex items-center space-x-3 px-4 py-2 rounded-lg hover:bg-indigo-600 transition-colors duration-200 hover-scale {{ request()->routeIs('superuser.dashboard') ? 'nav-active' : 'bg-indigo-700/50' }}">
+                <i class="fas fa-tachometer-alt text-yellow-300"></i>
+                <span class="font-medium">Dashboard</span>
+            </a>
             <!-- Kelola Anggota with Submenu -->
             <div>
                 <button @click="openKelolaAnggota = !openKelolaAnggota"
@@ -68,6 +76,14 @@
                class="flex items-center space-x-3 px-4 py-3 rounded-xl bg-indigo-700/50 hover:bg-indigo-600 transition-colors duration-200 hover-scale">
                 <i class="fas fa-box-open text-yellow-300"></i>
                 <span class="font-semibold">Kelola Bundle</span>
+            </a>
+
+
+            <!-- Kelola Order -->
+            <a href="{{ route('superuser.kelola-order.index') }}"
+               class="flex items-center space-x-3 px-4 py-2 rounded-lg hover:bg-indigo-600 transition-colors duration-200 hover-scale {{ request()->routeIs('superuser.kelola-order.*') ? 'nav-active' : 'bg-indigo-700/50' }}">
+                <i class="fas fa-list-alt text-yellow-300"></i>
+                <span class="font-medium">Kelola Pesanan</span>
             </a>
 
             <!-- Kelola Jadwal with Submenu -->

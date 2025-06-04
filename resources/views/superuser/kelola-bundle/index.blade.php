@@ -1,82 +1,69 @@
 @extends('layouts.superuser')
 
-@section('title', 'Kelola Bundle')
+@section('title', 'Kelola Bundle - Superuser Dashboard')
 
 @section('content')
-<div class="container mx-auto p-8">
-    <!-- Header -->
-    <div class="flex justify-between items-center mb-8">
-        <h3 class="text-3xl font-bold text-indigo-900 flex items-center space-x-3">
-            <i class="fas fa-boxes text-indigo-500"></i>
-            <span>Kelola Bundle</span>
-        </h3>
-        <a href="{{ route('superuser.kelola-bundle.create') }}"
-           class="flex items-center space-x-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg transition-transform transform hover:scale-105 duration-200">
-            <i class="fas fa-plus-circle"></i>
-            <span>Tambah Bundle</span>
-        </a>
-    </div>
-
-    <!-- Table -->
-    <div class="bg-white shadow-2xl rounded-2xl overflow-hidden">
-        <div class="overflow-x-auto">
-            <table class="min-w-full text-sm text-gray-700">
-                <thead class="bg-indigo-50 text-indigo-900">
-                    <tr>
-                        <th class="px-6 py-4 text-left font-semibold">#</th>
-                        <th class="px-6 py-4 text-left font-semibold">Nama Bundle</th>
-                        <th class="px-6 py-4 text-left font-semibold">Deskripsi</th>
-                        <th class="px-6 py-4 text-left font-semibold">Tanggal Dibuat</th>
-                        <th class="px-6 py-4 text-center font-semibold">Aksi</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @forelse($bundles as $index => $bundle)
-                    <tr class="border-b border-gray-100 hover:bg-indigo-50 transition duration-200">
-                        <td class="px-6 py-4">{{ $index + 1 }}</td>
-                        <td class="px-6 py-4 font-medium text-indigo-800">{{ $bundle->nama_bundle }}</td>
-                        <td class="px-6 py-4">{{ $bundle->deskripsi }}</td>
-                        <td class="px-6 py-4">{{ $bundle->created_at->format('d M Y') }}</td>
-                        <td class="px-6 py-4 text-center flex justify-center space-x-3">
-                            <!-- Tombol Lihat -->
-                            <a href="{{ route('superuser.kelola-bundle.index', $bundle->id) }}"
-                               class="text-blue-500 hover:text-blue-700 transform hover:scale-110 transition duration-200"
-                               title="Lihat">
-                                <i class="fas fa-eye"></i>
-                            </a>
-                            <!-- Tombol Edit -->
-                            <a href="{{ route('superuser.kelola-bundle.edit', $bundle->id) }}"
-                               class="text-yellow-500 hover:text-yellow-600 transform hover:scale-110 transition duration-200"
-                               title="Edit">
-                                <i class="fas fa-edit"></i>
-                            </a>
-                            <!-- Tombol Hapus -->
-                            <form action="{{ route('superuser.kelola-bundle.destroy', $bundle->id) }}"
-                                  method="POST"
-                                  onsubmit="return confirm('Yakin ingin menghapus bundle ini?');">
-                                @csrf
-                                @method('DELETE')
-                                <button type="submit"
-                                        class="text-red-500 hover:text-red-700 transform hover:scale-110 transition duration-200"
-                                        title="Hapus">
-                                    <i class="fas fa-trash"></i>
-                                </button>
-                            </form>
-                        </td>
-                    </tr>
-                    @empty
-                    <tr>
-                        <td colspan="5" class="px-6 py-6 text-center text-gray-500 text-lg">
-                            <i class="fas fa-exclamation-circle text-gray-400 mr-2"></i>
-                            Tidak ada data bundle.
-                        </td>
-                    </tr>
-                    @endforelse
-                </tbody>
-            </table>
+    <div class="max-w-7xl mx-auto py-10 px-6">
+        <h1 class="text-3xl font-bold text-indigo-900 mb-6">Kelola Bundle Ulang</h1>
+        <div class="bg-white p-6 rounded-lg shadow-lg">
+            <div class="mb-4">
+                <a href="{{ route('superuser.kelola-bundle.create') }}" class="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700 transition">Tambah Bundle</a>
+            </div>
+            @if (session('success'))
+                <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+                    {{ session('success') }}
+                </div>
+            @endif
+            @if ($bundles->isEmpty())
+                <p class="text-gray-500">Belum ada bundle yang terdaftar.</p>
+            @else
+                <table class="min-w-full bg-white border border-gray-200">
+                    <thead>
+                        <tr>
+                            <th class="py-2 px-4 border-b">ID</th>
+                            <th class="py-2 px-4 border-b">Nama Paket</th>
+                            <th class="py-2 px-4 border-b">Isi Paket</th>
+                            <th class="py-2 px-4 border-b">Deskripsi</th>
+                            <th class="py-2 px-4 border-b">Harga</th>
+                            <th class="py-2 px-4 border-b">Video</th>
+                            <th class="py-2 px-4 border-b">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($bundles as $bundle)
+                            <tr>
+                                <td class="py-2 px-4 border-b">{{ $bundle->id }}</td>
+                                <td class="py-2 px-4 border-b">{{ $bundle->nama_paket }}</td>
+                                <td class="py-2 px-4 border-b">
+                                    @foreach ($bundle->isi_paket as $musisi)
+                                        {{ $musisi }}<br>
+                                    @endforeach
+                                </td>
+                                <td class="py-2 px-4 border-b">{{ $bundle->deskripsi ?? '-' }}</td>
+                                <td class="py-2 px-4 border-b">Rp {{ number_format($bundle->harga, 2, ',', '.') }}</td>
+                                <td class="py-2 px-4 border-b">
+                                    @if ($bundle->video_path)
+                                        <video class="w-32 h-18 rounded" controls>
+                                            <source src="{{ asset('storage/' . $bundle->video_path) }}" type="video/mp4">
+                                            Browser Anda tidak mendukung pemutaran video.
+                                        </video>
+                                    @else
+                                        <span class="text-gray-500">Tidak ada video</span>
+                                    @endif
+                                </td>
+                                <td class="py-2 px-4 border-b">
+                                    <a href="{{ route('superuser.kelola-bundle.edit', $bundle->id) }}" class="text-blue-600 hover:underline">Edit</a>
+                                    <form action="{{ route('superuser.kelola-bundle.destroy', $bundle->id) }}" method="POST" class="inline-block">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="text-red-600 hover:underline ml-2" onclick="return confirm('Apakah Anda yakin ingin menghapus bundle ini?')">Hapus</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            @endif
         </div>
     </div>
-</div>
-
-<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
 @endsection

@@ -65,8 +65,6 @@ class Kernel extends HttpKernel
         'throttle' => \Illuminate\Routing\Middleware\ThrottleRequests::class,
         'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
         'biodata.required' => \App\Http\Middleware\BiodataRequired::class,
-    
-        // ✅ Custom Middleware Role
         'role' => \App\Http\Middleware\RoleMiddleware::class,
     ];
     

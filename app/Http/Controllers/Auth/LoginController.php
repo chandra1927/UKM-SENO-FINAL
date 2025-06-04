@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class LoginController extends Controller
 {
@@ -21,19 +22,28 @@ class LoginController extends Controller
      */
     public function login(Request $request)
     {
+        $request->validate([
+            'email' => 'required|email',
+            'password' => 'required',
+        ]);
+
         $credentials = $request->only('email', 'password');
 
         if (Auth::attempt($credentials)) {
             $user = Auth::user();
+            Log::info('User logged in', ['email' => $user->email, 'role' => $user->role]);
 
-            if (in_array($user->role, ['customer', 'anggota'])) {
-                return redirect()->intended('/dashboard');
+            if ($user->role === 'customer') {
+                return redirect()->route('customer.index');
+            } elseif ($user->role === 'anggota') {
+                return redirect()->route('anggota.index');
             }
 
-            Auth::logout(); // logout jika role tidak sesuai
+            Auth::logout();
+            return back()->withErrors(['email' => 'Role tidak diizinkan untuk login di sini.']);
         }
 
-        return back()->withErrors(['email' => 'Login gagal. Periksa kembali email dan password.']);
+        return back()->withErrors(['email' => 'Email atau kata sandi salah.']);
     }
 
     /**
@@ -49,10 +59,16 @@ class LoginController extends Controller
      */
     public function officeLogin(Request $request)
     {
+        $request->validate([
+            'email' => 'required|email',
+            'password' => 'required',
+        ]);
+
         $credentials = $request->only('email', 'password');
 
         if (Auth::attempt($credentials)) {
             $user = Auth::user();
+            Log::info('Office user logged in', ['email' => $user->email, 'role' => $user->role]);
 
             if ($user->role === 'superuser') {
                 return redirect()->intended('/superuser');
@@ -60,10 +76,11 @@ class LoginController extends Controller
                 return redirect()->intended('/keuangan');
             }
 
-            Auth::logout(); // logout jika role tidak sesuai
+            Auth::logout();
+            return back()->withErrors(['email' => 'Role tidak diizinkan untuk login di sini.']);
         }
 
-        return back()->withErrors(['email' => 'Login gagal. Periksa kembali email dan password.']);
+        return back()->withErrors(['email' => 'Email atau kata sandi salah.']);
     }
 
     /**
@@ -71,8 +88,8 @@ class LoginController extends Controller
      */
     public function logout(Request $request)
     {
+        Log::info('User logged out', ['email' => Auth::user()->email ?? 'unknown']);
         Auth::logout();
-
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 

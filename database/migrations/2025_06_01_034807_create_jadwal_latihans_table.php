@@ -4,18 +4,18 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-class CreateJadwalLatihansTable extends Migration
+class CreateJadwalLatihanTableV2 extends Migration
 {
     public function up()
     {
-        if (!Schema::hasTable('jadwal_latihans')) {
-            Schema::create('jadwal_latihans', function (Blueprint $table) {
+        if (!Schema::hasTable('jadwal_latihan')) {
+            Schema::create('jadwal_latihan', function (Blueprint $table) {
                 $table->id();
                 $table->string('kegiatan');
                 $table->date('tanggal');
-                $table->time('waktu_mulai');
-                $table->time('waktu_selesai');
-                $table->string('tempat');
+                $table->string('waktu_mulai')->nullable();
+                $table->string('waktu_selesai')->nullable();
+                $table->string('tempat')->nullable();
                 $table->text('catatan')->nullable();
                 $table->timestamps();
             });
@@ -24,6 +24,6 @@ class CreateJadwalLatihansTable extends Migration
 
     public function down()
     {
-        Schema::dropIfExists('jadwal_latihans');
+        Schema::dropIfExists('jadwal_latihan');
     }
 }

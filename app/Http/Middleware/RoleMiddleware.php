@@ -31,6 +31,7 @@ class RoleMiddleware
             // Jika tidak sesuai dengan role yang diizinkan, tampilkan pesan error
             abort(403, 'Akses ditolak.');
         }
+        
 
         // Jika role sesuai, lanjutkan ke permintaan selanjutnya
         return $next($request);
