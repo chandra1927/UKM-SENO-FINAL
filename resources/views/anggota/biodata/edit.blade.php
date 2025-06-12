@@ -8,11 +8,14 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
 </head>
 <body class="bg-gray-50 min-h-screen flex items-center justify-center">
-    <div class="max-w-2xl w-full mx-auto p-8">
-        <h1 class="text-3xl font-bold text-indigo-900 flex items-center space-x-3 mb-8">
-            <i class="fas fa-user-edit text-indigo-500"></i>
-            <span>Edit Biodata</span>
-        </h1>
+     <div class="container mx-auto py-8 px-4">
+        <div class="bg-white rounded-xl shadow-lg overflow-hidden max-w-2xl mx-auto">
+            <div class="bg-gradient-to-r from-indigo-600 to-blue-500 p-6 text-white">
+                <h1 class="text-2xl md:text-3xl font-bold flex items-center space-x-3">
+                    <i class="fas fa-user-edit mr-2"></i>
+                    <span>Edit Biodata</span>
+                </h1>
+            </div>
         <div class="bg-white shadow-2xl rounded-2xl p-8">
             @if (session('success'))
                 <div class="bg-green-50 border-l-4 border-green-400 text-green-700 p-4 mb-6 rounded-r-lg flex items-center">

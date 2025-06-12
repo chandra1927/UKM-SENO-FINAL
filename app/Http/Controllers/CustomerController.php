@@ -7,6 +7,8 @@ use App\Models\Customer;
 use App\Models\Order;
 use App\Models\Bundle;
 use Illuminate\Support\Facades\Auth;
+use Midtrans\Snap;
+use Midtrans\Config;
 
 class CustomerController extends Controller
 {
@@ -120,44 +122,73 @@ class CustomerController extends Controller
         return view('customer.index', compact('customer'));
     }
 
+
     public function createOrder($bundleId)
     {
         $bundle = Bundle::select('id', 'nama_paket', 'isi_paket', 'deskripsi', 'harga', 'video_path')->findOrFail($bundleId);
         return view('customer.order-create', compact('bundle'));
     }
 
-    public function storeOrder(Request $request)
-    {
-        $request->validate([
-            'bundle_id' => 'required|exists:bundles,id',
-            'notes' => 'nullable|string|max:1000',
-        ]);
+public function show($id)
+{
+    \Log::info('Accessing order show page', ['order_id' => $id, 'user_id' => Auth::id()]);
+    $order = Order::with('bundle')->where('id', $id)->where('user_id', Auth::id())->firstOrFail();
+    return view('customer.order.show', compact('order'));
+}
 
-        $bundle = Bundle::findOrFail($request->bundle_id);
+public function storeOrder(Request $request)
+{
+    // Validasi request
+    $request->validate([
+        'bundle_id' => 'required|exists:bundles,id',
+        'nama_lengkap' => 'required|string|max:255',
+        'email' => 'required|email',
+        'no_telepon' => 'required|string|max:20',
+    ]);
 
-        $order = Order::create([
-            'user_id' => Auth::id(),
-            'bundle_id' => $bundle->id,
-            'total_harga' => $bundle->harga,
-            'status' => 'pending',
-            'notes' => $request->notes,
-            'bundle_details' => json_encode([
-                'nama_paket' => $bundle->nama_paket,
-                'isi_paket' => $bundle->isi_paket,
-                'deskripsi' => $bundle->deskripsi,
-                'harga' => $bundle->harga,
-                'video_path' => $bundle->video_path,
-            ]),
-        ]);
+    // Ambil harga dari Bundle
+    $bundle = Bundle::findOrFail($request->bundle_id);
+    $totalHarga = $bundle->harga;
 
-        // Integrasi Midtrans (opsional, uncomment jika sudah diatur)
-        /*
-        $midtransResponse = // Panggil API Midtrans untuk mendapatkan payment URL
-        $order->midtrans_payment_url = $midtransResponse->redirect_url;
-        $order->midtrans_order_id = $midtransResponse->order_id;
+    // Simpan order ke database
+    $order = new Order();
+    $order->bundle_id = $request->bundle_id;
+    $order->user_id = auth()->id(); 
+    $order->nama_lengkap = $request->nama_lengkap;
+    $order->email = $request->email;
+    $order->no_telepon = $request->no_telepon;
+    $order->total_harga = $totalHarga;
+    $order->status = 'pending';
+    $order->save();
+
+    // Konfigurasi Midtrans
+    Config::$serverKey = config('midtrans.server_key');
+    Config::$isProduction = config('midtrans.is_production');
+    Config::$isSanitized = true;
+    Config::$is3ds = true;
+
+    // Siapkan data transaksi Midtrans
+    $params = [
+        'transaction_details' => [
+            'order_id' => 'ORDER-' . $order->id,
+            'gross_amount' => $order->total_harga,
+        ],
+        'customer_details' => [
+            'first_name' => $order->nama_lengkap,
+            'email' => $order->email,
+            'phone' => $order->no_telepon,
+        ],
+        'enabled_payments' => ['gopay', 'bank_transfer', 'shopeepay'], // opsional
+    ];
+
+    try {
+        $response = \Midtrans\Snap::createTransaction($params);
+        $order->payment_url = $response->redirect_url;
         $order->save();
-        */
 
-        return redirect()->route('customer.payment')->with('success', 'Pesanan berhasil dibuat. Silakan lakukan pembayaran.');
+        return redirect($response->redirect_url);
+    } catch (\Exception $e) {
+        return back()->with('error', 'Gagal membuat transaksi: ' . $e->getMessage());
     }
+}
 }

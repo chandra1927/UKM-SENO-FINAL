@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <title>@yield('title', 'Dashboard Anggota')</title>
+    <title>@yield('title', 'Dashboard Keuangan')</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <!-- Tailwind CSS -->
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
@@ -30,53 +30,53 @@
     <aside class="w-72 sidebar-gradient text-white shadow-2xl flex flex-col transition-all duration-300">
         <!-- Header -->
         <div class="p-6 text-3xl font-extrabold border-b border-indigo-500 flex items-center space-x-3">
-            <i class="fas fa-user text-yellow-300"></i>
-            <span>Anggota</span>
+            <i class="fas fa-money-bill-wave text-yellow-300"></i>
+            <span>Keuangan</span>
         </div>
 
         <!-- Navigation -->
-        <nav class="flex-1 p-6 space-y-3" x-data="{ openJadwal: false }">
-            <!-- Jadwal with Submenu -->
+        <nav class="flex-1 p-6 space-y-3" x-data="{ openTransaksi: false }">
+            <!-- Transaksi with Submenu -->
             <div>
-                <button @click="openJadwal = !openJadwal"
+                <button @click="openTransaksi = !openTransaksi"
                         class="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-indigo-700/50 hover:bg-indigo-600 focus:outline-none transition-colors duration-200 hover-scale">
                     <div class="flex items-center space-x-3">
-                        <i class="fas fa-calendar-alt text-yellow-300"></i>
-                        <span class="font-semibold">Jadwal</span>
+                        <i class="fas fa-exchange-alt text-yellow-300"></i>
+                        <span class="font-semibold">Transaksi</span>
                     </div>
                     <i class="fas fa-chevron-right transition-transform duration-300 text-yellow-300"
-                       :class="{ 'rotate-90': openJadwal }"></i>
+                       :class="{ 'rotate-90': openTransaksi }"></i>
                 </button>
-                <ul x-show="openJadwal" x-transition class="mt-3 ml-8 space-y-2">
+                <ul x-show="openTransaksi" x-transition class="mt-3 ml-8 space-y-2">
                     <li>
-                        <a href="{{ route('anggota.jadwal.event') }}"
+                        <a href="{{ route('keuangan.pemasukan') }}"
                            class="flex items-center space-x-3 px-4 py-2 rounded-lg hover:bg-indigo-500 transition-colors duration-200 hover-scale">
-                            <i class="fas fa-calendar-check text-yellow-300"></i>
-                            <span>Jadwal Event</span>
+                            <i class="fas fa-arrow-down text-yellow-300"></i>
+                            <span>Pemasukan</span>
                         </a>
                     </li>
                     <li>
-                        <a href="{{ route('anggota.jadwal.latihan') }}"
+                        <a href="{{ route('keuangan.pengeluaran') }}"
                            class="flex items-center space-x-3 px-4 py-2 rounded-lg hover:bg-indigo-500 transition-colors duration-200 hover-scale">
-                            <i class="fas fa-dumbbell text-yellow-300"></i>
-                            <span>Jadwal Latihan</span>
-                        </a>
-                    </li>
-                    <li>
-                        <a href="{{ route('anggota.jadwal.rapat') }}"
-                           class="flex items-center space-x-3 px-4 py-2 rounded-lg hover:bg-indigo-500 transition-colors duration-200 hover-scale">
-                            <i class="fas fa-users-cog text-yellow-300"></i>
-                            <span>Jadwal Rapat</span>
+                            <i class="fas fa-arrow-up text-yellow-300"></i>
+                            <span>Pengeluaran</span>
                         </a>
                     </li>
                 </ul>
             </div>
 
-            <!-- Biodata -->
-            <a href="{{ route('anggota.biodata.index') }}"
+            <!-- Laporan Keuangan -->
+            <a href="{{ route('keuangan.laporan') }}"
                class="flex items-center space-x-3 px-4 py-3 rounded-xl bg-indigo-700/50 hover:bg-indigo-600 transition-colors duration-200 hover-scale">
-                <i class="fas fa-user text-yellow-300"></i>
-                <span class="font-semibold">Biodata</span>
+                <i class="fas fa-file-alt text-yellow-300"></i>
+                <span class="font-semibold">Laporan Keuangan</span>
+            </a>
+
+            <!-- Dashboard Keuangan -->
+            <a href="{{ route('keuangan.dashboard') }}"
+               class="flex items-center space-x-3 px-4 py-3 rounded-xl bg-indigo-700/50 hover:bg-indigo-600 transition-colors duration-200 hover-scale">
+                <i class="fas fa-tachometer-alt text-yellow-300"></i>
+                <span class="font-semibold">Dashboard</span>
             </a>
         </nav>
 

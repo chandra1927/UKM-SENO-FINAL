@@ -9,139 +9,153 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
     <style>
         .sidebar-gradient {
-            background: linear-gradient(180deg, #1e3a8a 0%, #1e40af 100%);
+            background: linear-gradient(180deg, #4c1d95 0%, #5b21b6 100%);
         }
         .hover-scale {
-            transition: transform 0.2s ease-in-out;
+            transition: all 0.2s ease-in-out;
         }
         .hover-scale:hover {
-            transform: scale(1.05);
+            transform: scale(1.03);
         }
         .main-content {
-            background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+            background: #f9fafb;
+        }
+        .nav-active {
+            background-color: #7e22ce;
+            box-shadow: 0 4px 6px -1px rgba(126, 34, 206, 0.3);
+        }
+        .nav-item {
+            transition: all 0.2s ease;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .nav-item:hover {
+            background-color: #7e22ce;
+        }
+        .submenu-item {
+            transition: all 0.2s ease;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .submenu-item:hover {
+            background-color: #6b21a8;
+            margin-left: 4px;
+        }
+        .sidebar-shadow {
+            box-shadow: 6px 0 20px rgba(0, 0, 0, 0.15);
+        }
+        .text-glow {
+            text-shadow: 0 0 8px rgba(216, 180, 254, 0.4);
+        }
+        .icon-glow {
+            filter: drop-shadow(0 0 4px rgba(216, 180, 254, 0.6));
         }
     </style>
 </head>
-<body class="flex min-h-screen font-sans antialiased">
+<body class="flex min-h-screen font-sans antialiased bg-gray-50">
     <!-- Sidebar -->
-    <aside class="w-72 sidebar-gradient text-white shadow-2xl flex flex-col transition-all duration-300">
-        <div class="p-6 text-3xl font-extrabold border-b border-indigo-500 flex items-center space-x-3">
-            <i class="fas fa-crown text-yellow-300"></i>
-            <span>Superuser Panel</span>
+    <aside class="w-72 sidebar-gradient text-white sidebar-shadow flex flex-col transition-all duration-300">
+        <div class="p-6 text-2xl font-bold border-b border-purple-700 flex items-center space-x-3">
+            <i class="fas fa-crown text-purple-300 icon-glow"></i>
+            <span class="text-glow">Superuser Panel</span>
         </div>
         
-        <nav class="flex-1 p-6 space-y-3" x-data="{
+        <nav class="flex-1 p-5 space-y-3" x-data="{
             openKelolaAnggota: false,
             openKelolaJadwal: false,
             openKelolaPaket: false
         }">
-        <nav class="flex-1 p-4 space-y-2">
             <!-- Dashboard -->
             <a href="{{ route('superuser.dashboard') }}"
-               class="flex items-center space-x-3 px-4 py-2 rounded-lg hover:bg-indigo-600 transition-colors duration-200 hover-scale {{ request()->routeIs('superuser.dashboard') ? 'nav-active' : 'bg-indigo-700/50' }}">
-                <i class="fas fa-tachometer-alt text-yellow-300"></i>
-                <span class="font-medium">Dashboard</span>
+               class="flex items-center space-x-4 px-5 py-3.5 rounded-xl nav-item text-lg {{ request()->routeIs('superuser.dashboard') ? 'nav-active' : 'bg-purple-800/70' }}">
+                <i class="fas fa-tachometer-alt text-purple-200 w-6 text-center icon-glow"></i>
+                <span class="font-semibold text-glow">Dashboard</span>
             </a>
+            
             <!-- Kelola Anggota with Submenu -->
-            <div>
+            <div class="space-y-2">
                 <button @click="openKelolaAnggota = !openKelolaAnggota"
-                        class="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-indigo-700/50 hover:bg-indigo-600 focus:outline-none transition-colors duration-200 hover-scale">
-                    <div class="flex items-center space-x-3">
-                        <i class="fas fa-users text-yellow-300"></i>
-                        <span class="font-semibold">Kelola Anggota</span>
+                        class="w-full flex items-center justify-between px-5 py-3.5 rounded-xl bg-purple-800/70 hover:bg-purple-700 focus:outline-none nav-item text-lg">
+                    <div class="flex items-center space-x-4">
+                        <i class="fas fa-users text-purple-200 w-6 text-center icon-glow"></i>
+                        <span class="font-semibold text-glow">Kelola Anggota</span>
                     </div>
-                    <i class="fas fa-chevron-right transition-transform duration-300 text-yellow-300"
-                       :class="{ 'rotate-90': openKelolaAnggota }"></i>
+                    <i class="fas fa-chevron-down transition-transform duration-200 text-purple-200 text-sm"
+                       :class="{ 'rotate-180': openKelolaAnggota }"></i>
                 </button>
-                <ul x-show="openKelolaAnggota" x-transition class="mt-3 ml-8 space-y-2">
-                    <li>
-                        <a href="{{ route('superuser.kelola-anggota.index') }}"
-                           class="flex items-center space-x-3 px-4 py-2 rounded-lg hover:bg-indigo-500 transition-colors duration-200 hover-scale">
-                            <i class="fas fa-list-ul text-yellow-300"></i>
-                            <span>Lihat Data Anggota</span>
-                        </a>
-                    </li>
-                    <li>
-                        <a href="{{ route('superuser.kelola-password') }}"
-                           class="flex items-center space-x-3 px-4 py-2 rounded-lg hover:bg-indigo-500 transition-colors duration-200 hover-scale">
-                            <i class="fas fa-key text-yellow-300"></i>
-                            <span>Password Anggota</span>
-                        </a>
-                    </li>
-                </ul>
+                <div x-show="openKelolaAnggota" x-transition class="ml-3 pl-5 border-l-2 border-purple-600 space-y-2">
+                    <a href="{{ route('superuser.kelola-anggota.index') }}"
+                       class="flex items-center space-x-4 px-4 py-2.5 rounded-lg submenu-item text-base {{ request()->routeIs('superuser.kelola-anggota.*') ? 'bg-purple-700' : '' }}">
+                        <i class="fas fa-list-ul text-purple-200 text-base w-6 text-center"></i>
+                        <span class="text-glow">Data Anggota</span>
+                    </a>
+                    <a href="{{ route('superuser.kelola-password') }}"
+                       class="flex items-center space-x-4 px-4 py-2.5 rounded-lg submenu-item text-base {{ request()->routeIs('superuser.kelola-password') ? 'bg-purple-700' : '' }}">
+                        <i class="fas fa-key text-purple-200 text-base w-6 text-center"></i>
+                        <span class="text-glow">Password Anggota</span>
+                    </a>
+                </div>
             </div>
 
-            <!-- Kelola Bundle tanpa Submenu -->
+            <!-- Kelola Bundle -->
             <a href="{{ route('superuser.kelola-bundle.index') }}"
-               class="flex items-center space-x-3 px-4 py-3 rounded-xl bg-indigo-700/50 hover:bg-indigo-600 transition-colors duration-200 hover-scale">
-                <i class="fas fa-box-open text-yellow-300"></i>
-                <span class="font-semibold">Kelola Bundle</span>
+               class="flex items-center space-x-4 px-5 py-3.5 rounded-xl nav-item text-lg {{ request()->routeIs('superuser.kelola-bundle.*') ? 'nav-active' : 'bg-purple-800/70' }}">
+                <i class="fas fa-box-open text-purple-200 w-6 text-center icon-glow"></i>
+                <span class="font-semibold text-glow">Kelola Bundle</span>
             </a>
-
 
             <!-- Kelola Order -->
             <a href="{{ route('superuser.kelola-order.index') }}"
-               class="flex items-center space-x-3 px-4 py-2 rounded-lg hover:bg-indigo-600 transition-colors duration-200 hover-scale {{ request()->routeIs('superuser.kelola-order.*') ? 'nav-active' : 'bg-indigo-700/50' }}">
-                <i class="fas fa-list-alt text-yellow-300"></i>
-                <span class="font-medium">Kelola Pesanan</span>
+               class="flex items-center space-x-4 px-5 py-3.5 rounded-xl nav-item text-lg {{ request()->routeIs('superuser.kelola-order.*') ? 'nav-active' : 'bg-purple-800/70' }}">
+                <i class="fas fa-list-alt text-purple-200 w-6 text-center icon-glow"></i>
+                <span class="font-semibold text-glow">Kelola Pesanan</span>
             </a>
 
             <!-- Kelola Jadwal with Submenu -->
-<div>
-    <button @click="openKelolaJadwal = !openKelolaJadwal"
-            class="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-indigo-700/50 hover:bg-indigo-600 focus:outline-none transition-colors duration-200 hover-scale">
-        <div class="flex items-center space-x-3">
-            <i class="fas fa-calendar-alt text-yellow-300"></i>
-            <span class="font-semibold">Kelola Jadwal</span>
-        </div>
-        <i class="fas fa-chevron-right transition-transform duration-300 text-yellow-300"
-           :class="{ 'rotate-90': openKelolaJadwal }"></i>
-    </button>
-    <ul x-show="openKelolaJadwal" x-transition class="mt-3 ml-8 space-y-2">
-        <li>
-            <a href="{{ route('superuser.jadwal.event.index') }}"
-               class="flex items-center space-x-3 px-4 py-2 rounded-lg hover:bg-indigo-500 transition-colors duration-200 hover-scale">
-                <i class="fas fa-calendar-check text-yellow-300"></i>
-                <span>Jadwal Event</span>
-            </a>
-        </li>
-        <li>
-            <a href="{{ route('superuser.jadwal.latihan.index') }}"
-               class="flex items-center space-x-3 px-4 py-2 rounded-lg hover:bg-indigo-500 transition-colors duration-200 hover-scale">
-                <i class="fas fa-dumbbell text-yellow-300"></i>
-                <span>Jadwal Latihan</span>
-            </a>
-        </li>
-        <li>
-            <a href="{{ route('superuser.jadwal.rapat.index') }}"
-               class="flex items-center space-x-3 px-4 py-2 rounded-lg hover:bg-indigo-500 transition-colors duration-200 hover-scale">
-                <i class="fas fa-users-cog text-yellow-300"></i>
-                <span>Jadwal Rapat</span>
-            </a>
-        </li>
-    </ul>
-</div>
-
-            
+            <div class="space-y-2">
+                <button @click="openKelolaJadwal = !openKelolaJadwal"
+                        class="w-full flex items-center justify-between px-5 py-3.5 rounded-xl bg-purple-800/70 hover:bg-purple-700 focus:outline-none nav-item text-lg">
+                    <div class="flex items-center space-x-4">
+                        <i class="fas fa-calendar-alt text-purple-200 w-6 text-center icon-glow"></i>
+                        <span class="font-semibold text-glow">Kelola Jadwal</span>
+                    </div>
+                    <i class="fas fa-chevron-down transition-transform duration-200 text-purple-200 text-sm"
+                       :class="{ 'rotate-180': openKelolaJadwal }"></i>
+                </button>
+                <div x-show="openKelolaJadwal" x-transition class="ml-3 pl-5 border-l-2 border-purple-600 space-y-2">
+                    <a href="{{ route('superuser.jadwal.event.index') }}"
+                       class="flex items-center space-x-4 px-4 py-2.5 rounded-lg submenu-item text-base {{ request()->routeIs('superuser.jadwal.event.*') ? 'bg-purple-700' : '' }}">
+                        <i class="fas fa-calendar-check text-purple-200 text-base w-6 text-center"></i>
+                        <span class="text-glow">Jadwal Event</span>
+                    </a>
+                    <a href="{{ route('superuser.jadwal.latihan.index') }}"
+                       class="flex items-center space-x-4 px-4 py-2.5 rounded-lg submenu-item text-base {{ request()->routeIs('superuser.jadwal.latihan.*') ? 'bg-purple-700' : '' }}">
+                        <i class="fas fa-dumbbell text-purple-200 text-base w-6 text-center"></i>
+                        <span class="text-glow">Jadwal Latihan</span>
+                    </a>
+                    <a href="{{ route('superuser.jadwal.rapat.index') }}"
+                       class="flex items-center space-x-4 px-4 py-2.5 rounded-lg submenu-item text-base {{ request()->routeIs('superuser.jadwal.rapat.*') ? 'bg-purple-700' : '' }}">
+                        <i class="fas fa-users-cog text-purple-200 text-base w-6 text-center"></i>
+                        <span class="text-glow">Jadwal Rapat</span>
+                    </a>
+                </div>
+            </div>
         </nav>
 
         <!-- Logout -->
-        <div class="p-6 border-t border-indigo-500">
+        <div class="p-5 border-t border-purple-700">
             <form method="POST" action="{{ route('logout') }}">
                 @csrf
                 <button type="submit"
-                        class="flex items-center justify-center w-full space-x-3 bg-red-500 hover:bg-red-600 text-white font-semibold py-3 rounded-xl transition-colors duration-200 hover-scale">
-                    <i class="fas fa-sign-out-alt"></i>
-                    <span>Logout</span>
+                        class="flex items-center justify-center w-full space-x-4 bg-purple-700 hover:bg-purple-600 text-white font-semibold py-3 rounded-xl transition-colors duration-200 text-lg">
+                    <i class="fas fa-sign-out-alt icon-glow"></i>
+                    <span class="text-glow">Logout</span>
                 </button>
             </form>
         </div>
     </aside>
 
     <!-- Main Content -->
-    <main class="flex-1 p-12 main-content rounded-l-3xl shadow-2xl m-6 relative overflow-auto">
-        <div class="absolute inset-0 bg-white/30 backdrop-blur-sm rounded-l-3xl"></div>
-        <div class="relative z-10">
+    <main class="flex-1 p-10 main-content overflow-auto">
+        <div class="bg-white rounded-2xl shadow-md p-8 min-h-full">
             @yield('content')
         </div>
     </main>

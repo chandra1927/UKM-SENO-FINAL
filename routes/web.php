@@ -58,9 +58,18 @@ Route::get('/dashboard', [DashboardController::class, 'index'])
 | Dashboard - Keuangan
 |--------------------------------------------------------------------------
 */
-Route::get('/keuangan', [KeuanganController::class, 'index'])
-    ->middleware(['auth', 'role:keuangan'])
-    ->name('keuangan.dashboard');
+Route::middleware(['auth', 'role:keuangan'])
+     ->prefix('keuangan')
+     ->name('keuangan.')
+     ->group(function () {
+    Route::get('/', [KeuanganController::class, 'index'])->name('dashboard');
+    Route::get('/pemasukan', [KeuanganController::class, 'pemasukan'])->name('pemasukan');
+    Route::post('/pemasukan', [KeuanganController::class, 'storePemasukan'])->name('pemasukan.store');
+    Route::get('/pengeluaran', [KeuanganController::class, 'pengeluaran'])->name('pengeluaran');
+    Route::post('/pengeluaran', [KeuanganController::class, 'storePengeluaran'])->name('pengeluaran.store');
+    Route::get('/laporan', [KeuanganController::class, 'laporan'])->name('laporan');
+    Route::post('/keuangan/midtrans-notification', [KeuanganController::class, 'handleMidtransNotification'])->name('keuangan.midtrans-notification');
+});
 
 /*
 |--------------------------------------------------------------------------
@@ -138,6 +147,8 @@ Route::middleware(['auth', 'role:customer'])->prefix('customer')->name('customer
     Route::delete('/{customer}', [CustomerController::class, 'destroy'])->name('destroy');
     Route::get('/order/create/{bundle}', [CustomerController::class, 'createOrder'])->name('order.create');
     Route::post('/order/store', [CustomerController::class, 'storeOrder'])->name('order.store');
+//midtrans
+    Route::post('/payments/midtrans-notification', [App\Http\Controllers\PaymentCallbackController::class, 'handleNotification'])->name('midtrans.notification');
 });
 
 Route::middleware(['auth', 'role:anggota'])->group(function () {
@@ -169,4 +180,28 @@ Route::middleware(['auth', 'role:anggota'])
     Route::get('/biodata/{biodata}/edit', [AnggotaJadwalController::class, 'editBiodata'])->name('biodata.edit');
     Route::put('/biodata/{biodata}', [AnggotaJadwalController::class, 'updateBiodata'])->name('biodata.update');
     Route::delete('/biodata/{biodata}', [AnggotaJadwalController::class, 'destroyBiodata'])->name('biodata.destroy');
+
+Route::middleware(['auth', 'role:customer'])->prefix('customer')->name('customer.')->group(function() {
+    Route::get('/', [CustomerController::class, 'index'])->name('index');
+    Route::get('/history', [CustomerController::class, 'history'])->name('history');
+    Route::get('/order', [CustomerController::class, 'order'])->name('order');
+    Route::get('/payment/{id}', [CustomerController::class, 'payment'])->name('payment');
+    Route::get('/profile', [CustomerController::class, 'indexCustomer'])->name('indexCustomer');
+    Route::get('/create', [CustomerController::class, 'create'])->name('create');
+    Route::post('/', [CustomerController::class, 'store'])->name('store');
+    Route::get('/edit/{customer}', [CustomerController::class, 'edit'])->name('edit');
+    Route::put('/profile/{customer}', [CustomerController::class, 'update'])->name('update');
+    Route::delete('/profile/{customer}', [CustomerController::class, 'destroy'])->name('destroy');
+    Route::get('/order/create/{bundle}', [CustomerController::class, 'createOrder'])->name('order.create');
+    Route::post('/order/store', [CustomerController::class, 'storeOrder'])->name('order.store');
+    Route::get('/order/{id}', [CustomerController::class, 'show'])->name('order.show');
 });
+
+});
+
+Route::fallback(function () {
+    \Log::warning('Invalid route accessed', ['url' => request()->url()]);
+    return redirect()->route('customer.order')->with('error', 'Halaman tidak ditemukan.');
+});
+
+

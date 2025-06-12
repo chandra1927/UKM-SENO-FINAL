@@ -1,30 +1,28 @@
 @extends('layouts.keuangan')
 
-@section('title', 'Dashboard Keuangan')
+@section('title', 'Laporan Keuangan')
 
 @section('content')
 <main class="max-w-7xl mx-auto mt-10 px-6">
-    <h1 class="text-3xl font-bold text-gray-700 mb-6">Selamat Datang, {{ Auth::user()->name }}</h1>
+    <h1 class="text-3xl font-bold text-gray-700 mb-6">Laporan Keuangan</h1>
 
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
         <div class="bg-white rounded-xl shadow-md p-6">
             <h2 class="text-lg font-semibold text-blue-600 mb-2">Total Pemasukan</h2>
-            <p class="text-2xl font-bold text-gray-800">Rp {{ number_format($totalPemasukan, 2, ',', '.') }}</p>
+            <p class="text-2xl font-bold text-gray-800">Rp {{ number_format($pemasukan, 2, ',', '.') }}</p>
         </div>
-
         <div class="bg-white rounded-xl shadow-md p-6">
             <h2 class="text-lg font-semibold text-blue-600 mb-2">Total Pengeluaran</h2>
-            <p class="text-2xl font-bold text-gray-800">Rp {{ number_format($totalPengeluaran, 2, ',', '.') }}</p>
+            <p class="text-2xl font-bold text-gray-800">Rp {{ number_format($pengeluaran, 2, ',', '.') }}</p>
         </div>
-
         <div class="bg-white rounded-xl shadow-md p-6">
             <h2 class="text-lg font-semibold text-blue-600 mb-2">Saldo Saat Ini</h2>
             <p class="text-2xl font-bold text-gray-800">Rp {{ number_format($saldo, 2, ',', '.') }}</p>
         </div>
     </div>
 
-    <div class="mt-10">
-        <h2 class="text-xl font-semibold text-gray-700 mb-4">Riwayat Transaksi</h2>
+    <div class="bg-white rounded-xl shadow-md p-6">
+        <h2 class="text-lg font-semibold text-blue-600 mb-4">Riwayat Transaksi</h2>
         <table class="w-full bg-white rounded-xl shadow overflow-hidden">
             <thead class="bg-blue-500 text-white">
                 <tr>

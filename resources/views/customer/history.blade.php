@@ -37,7 +37,7 @@
                         <td class="border px-4 py-2">{{ $order->status }}</td>
                         <td class="border px-4 py-2">
                             @if ($order->status == 'pending')
-                                <form action="{{ route('customer.cancel', $order->id) }}" method="POST">
+                                <form action="{}" method="POST">
                                     @csrf
                                     <button type="submit" class="text-red-500">Batalkan</button>
                                 </form>
