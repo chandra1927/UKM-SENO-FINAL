@@ -9,6 +9,8 @@ use App\Http\Controllers\SuperuserController;
 use App\Http\Controllers\KeuanganController;
 use App\Http\Controllers\AnggotaJadwalController;
 use App\Http\Controllers\CustomerController;
+use App\Http\Controllers\MidtransController;
+
 
 /*
 |--------------------------------------------------------------------------
@@ -170,7 +172,7 @@ Route::middleware(['auth', 'role:anggota'])
      ->prefix('anggota')
      ->name('anggota.')
      ->group(function () {
-    Route::get('/', [AnggotaJadwalController::class, 'index'])->name('index');
+    Route::get('/', [AnggotaJadwalController::class, 'index'])->name('dashboard');
     Route::get('/jadwal/event', [AnggotaJadwalController::class, 'event'])->name('jadwal.event');
     Route::get('/jadwal/latihan', [AnggotaJadwalController::class, 'latihan'])->name('jadwal.latihan');
     Route::get('/jadwal/rapat', [AnggotaJadwalController::class, 'rapat'])->name('jadwal.rapat');
@@ -195,7 +197,115 @@ Route::middleware(['auth', 'role:customer'])->prefix('customer')->name('customer
     Route::get('/order/create/{bundle}', [CustomerController::class, 'createOrder'])->name('order.create');
     Route::post('/order/store', [CustomerController::class, 'storeOrder'])->name('order.store');
     Route::get('/order/{id}', [CustomerController::class, 'show'])->name('order.show');
+
+    // Midtrans callback route (webhook)
+Route::post('/midtrans/callback', [\App\Http\Controllers\MidtransController::class, 'callback']);
+
+// Halaman sukses setelah pembayaran
+Route::get('/customer/payment-success', [\App\Http\Controllers\CustomerController::class, 'paymentSuccess'])->name('customer.payment.success');
+Route::get('/customer/payment-success', [CustomerController::class, 'paymentSuccess'])->name('customer.payment.success');
+Route::post('/midtrans/callback', [MidtransController::class, 'callback']);
+Route::get('/payment/{id}', [CustomerController::class, 'showPaymentPage'])->name('customer.payment.callback');
+Route::get('/payment/{id}', [CustomerController::class, 'showPaymentPage'])->name('customer.payment.callback');
+Route::get('/payment/callback/{order}', [CustomerController::class, 'handleCallback'])->name('customer.payment.callback');
+
+
+
+
+Route::middleware('auth')->group(function () {
+    Route::get('/customer', [CustomerController::class, 'index'])->name('customer.index');
+    Route::get('/customer/history', [CustomerController::class, 'history'])->name('customer.history');
+    Route::get('/customer/order', [CustomerController::class, 'order'])->name('customer.order');
+    Route::get('/customer/payment', [CustomerController::class, 'payment'])->name('customer.payment');
+    Route::get('/customer/create', [CustomerController::class, 'create'])->name('customer.create');
+    Route::post('/customer', [CustomerController::class, 'store'])->name('customer.store');
+    Route::get('/customer/{customer}/edit', [CustomerController::class, 'edit'])->name('customer.edit');
+    Route::put('/customer/{customer}', [CustomerController::class, 'update'])->name('customer.update');
+    Route::delete('/customer/{customer}', [CustomerController::class, 'destroy'])->name('customer.destroy');
+    Route::get('/customer/index', [CustomerController::class, 'indexCustomer'])->name('customer.indexCustomer');
+    Route::get('/customer/order/create/{bundleId}', [CustomerController::class, 'createOrder'])->name('customer.order.create');
+    Route::post('/customer/order', [CustomerController::class, 'storeOrder'])->name('customer.order.store');
+    Route::get('/customer/order/{id}', [CustomerController::class, 'show'])->name('customer.order.show');
+    Route::get('/customer/payment/{id}', [CustomerController::class, 'showPaymentPage'])->name('customer.payment.show');
+    Route::get('/customer/payment/callback/{orderId}', [CustomerController::class, 'handleCallback'])->name('customer.payment.callback');
+    Route::post('/midtrans/notification', [CustomerController::class, 'handleMidtransNotification'])->name('midtrans.notification');
 });
+
+Route::middleware('auth')->group(function () {
+    Route::get('/customer', [CustomerController::class, 'index'])->name('customer.index');
+    Route::get('/customer/history', [CustomerController::class, 'history'])->name('customer.history');
+    Route::get('/customer/order', [CustomerController::class, 'order'])->name('customer.order');
+    Route::get('/customer/payment', [CustomerController::class, 'payment'])->name('customer.payment');
+    Route::get('/customer/create', [CustomerController::class, 'create'])->name('customer.create');
+    Route::post('/customer', [CustomerController::class, 'store'])->name('customer.store');
+    Route::get('/customer/{customer}/edit', [CustomerController::class, 'edit'])->name('customer.edit');
+    Route::put('/customer/{customer}', [CustomerController::class, 'update'])->name('customer.update');
+    Route::delete('/customer/{customer}', [CustomerController::class, 'destroy'])->name('customer.destroy');
+    Route::get('/customer/index', [CustomerController::class, 'indexCustomer'])->name('customer.indexCustomer');
+    Route::get('/customer/order/create/{bundleId}', [CustomerController::class, 'createOrder'])->name('customer.order.create');
+    Route::post('/customer/order', [CustomerController::class, 'storeOrder'])->name('customer.order.store');
+    Route::get('/customer/order/{id}', [CustomerController::class, 'show'])->name('customer.order.show');
+    Route::get('/customer/payment/{id}', [CustomerController::class, 'showPaymentPage'])->name('customer.payment.show');
+    Route::get('/customer/payment/callback/{orderId}', [CustomerController::class, 'handleCallback'])->name('customer.payment.callback');
+
+
+    Route::middleware(['auth'])->group(function () {
+    Route::get('/customer', [CustomerController::class, 'index'])->name('customer.index');
+    Route::get('/customer/history', [CustomerController::class, 'history'])->name('customer.history');
+    Route::get('/customer/order', [CustomerController::class, 'order'])->name('customer.order');
+    Route::get('/customer/payment', [CustomerController::class, 'payment'])->name('customer.payment');
+    Route::get('/customer/create', [CustomerController::class, 'create'])->name('customer.create');
+    Route::post('/customer', [CustomerController::class, 'store'])->name('customer.store');
+    Route::get('/customer/{customer}/edit', [CustomerController::class, 'edit'])->name('customer.edit');
+    Route::put('/customer/{customer}', [CustomerController::class, 'update'])->name('customer.update');
+    Route::delete('/customer/{customer}', [CustomerController::class, 'destroy'])->name('customer.destroy');
+    Route::get('/customer/index', [CustomerController::class, 'indexCustomer'])->name('customer.indexCustomer');
+    Route::get('/customer/order/create/{bundleId}', [CustomerController::class, 'createOrder'])->name('customer.order.create');
+    Route::post('/customer/order', [CustomerController::class, 'storeOrder'])->name('customer.order.store');
+    Route::get('/customer/order/{id}', [CustomerController::class, 'show'])->name('customer.order.show');
+    Route::get('/customer/payment/{id}', [CustomerController::class, 'showPaymentPage'])->name('customer.payment.show');
+    Route::get('/customer/payment/callback/{orderId}', [CustomerController::class, 'handleCallback'])->name('customer.payment.callback');
+
+
+    // Contoh definisi route yang diperlukan
+Route::get('/customer/order/{id}', [OrderController::class, 'show'])->name('customer.order.show');
+
+// Atau jika menggunakan group route
+Route::prefix('customer')->name('customer.')->group(function () {
+    Route::get('/order/{id}', [OrderController::class, 'show'])->name('order.show');
+});
+    Route::middleware(['auth'])->group(function () {
+    Route::get('/customer', [CustomerController::class, 'index'])->name('customer.index');
+    Route::get('/customer/history', [CustomerController::class, 'history'])->name('customer.history');
+    Route::get('/customer/order', [CustomerController::class, 'order'])->name('customer.order');
+    Route::get('/customer/payment', [CustomerController::class, 'payment'])->name('customer.payment');
+    Route::get('/customer/create', [CustomerController::class, 'create'])->name('customer.create');
+    Route::post('/customer', [CustomerController::class, 'store'])->name('customer.store');
+    Route::get('/customer/{customer}/edit', [CustomerController::class, 'edit'])->name('customer.edit');
+    Route::put('/customer/{customer}', [CustomerController::class, 'update'])->name('customer.update');
+    Route::delete('/customer/{customer}', [CustomerController::class, 'destroy'])->name('customer.destroy');
+    Route::get('/customer/index', [CustomerController::class, 'indexCustomer'])->name('customer.indexCustomer');
+    Route::get('/customer/order/create/{bundleId}', [CustomerController::class, 'createOrder'])->name('customer.order.create');
+    Route::post('/customer/order', [CustomerController::class, 'storeOrder'])->name('customer.order.store');
+    Route::get('/customer/order/{id}', [CustomerController::class, 'show'])->name('customer.order.show');
+    Route::get('/customer/payment/{id}', [CustomerController::class, 'showPaymentPage'])->name('customer.payment.show');
+    Route::get('/customer/payment/callback/{orderId}', [CustomerController::class, 'handleCallback'])->name('customer.payment.callback');
+});
+
+// Midtrans notification route (outside auth middleware)
+Route::post('/midtrans/notification', [CustomerController::class, 'handleMidtransNotification'])->name('midtrans.notification');
+});
+
+// Midtrans notification route (outside auth middleware)
+Route::post('/midtrans/notification', [CustomerController::class, 'handleMidtransNotification'])->name('midtrans.notification');
+});
+
+// Midtrans notification route (outside auth middleware)
+Route::post('/midtrans/notification', [CustomerController::class, 'handleMidtransNotification'])->name('midtrans.notification');
+// Midtrans notification route (outside auth middleware)
+Route::post('/midtrans/notification', [CustomerController::class, 'handleMidtransNotification'])->name('midtrans.notification');
+});
+
 
 });
 
