@@ -16,6 +16,10 @@
             <div class="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-6 rounded-lg">
                 <p class="font-semibold">{{ session('warning') }}</p>
             </div>
+        @elseif (session('error'))
+            <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded-lg">
+                <p class="font-semibold">{{ session('error') }}</p>
+            </div>
         @endif
 
         @if($orders->isEmpty())
@@ -28,17 +32,23 @@
         @else
             <div class="bg-purple-50 p-4 rounded-lg">
                 <h2 class="text-lg font-semibold text-purple-700 mb-4">Riwayat Pesanan Anda</h2>
+                <div class="mb-4">
+                    <button id="refreshOrders" class="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-4 rounded-lg transition transform hover:scale-105">
+                        <i class="fas fa-sync mr-2"></i> Segarkan Status
+                    </button>
+                </div>
                 <div class="overflow-x-auto">
                     <table class="min-w-full bg-white border border-purple-200 rounded-lg text-sm">
                         <thead>
                             <tr class="bg-purple-600 text-white">
-                                <th class="py-3 px-4 text-center font-semibold">ID Pesanan</th>
+                                <th class="py-3 px-4 text-center font-semibold">ID</th>
                                 <th class="py-3 px-4 text-center font-semibold">Bundle</th>
                                 <th class="py-3 px-4 text-center font-semibold">Total Harga</th>
                                 <th class="py-3 px-4 text-center font-semibold">Nama Lengkap</th>
                                 <th class="py-3 px-4 text-center font-semibold">Tanggal Acara</th>
                                 <th class="py-3 px-4 text-center font-semibold">Status</th>
                                 <th class="py-3 px-4 text-center font-semibold">Midtrans Order ID</th>
+                                <th class="py-3 px-4 text-center font-semibold">Snap Token</th>
                                 <th class="py-3 px-4 text-center font-semibold">Aksi</th>
                             </tr>
                         </thead>
@@ -57,30 +67,20 @@
                                                 : ($order->status === 'success' 
                                                     ? 'bg-green-100 text-green-700' 
                                                     : 'bg-red-100 text-red-700') }}">
-                                            @switch($order->status)
-                                                @case('pending')
-                                                    Menunggu Pembayaran
-                                                    @break
-                                                @case('success')
-                                                    Pembayaran Berhasil
-                                                    @break
-                                                @case('failed')
-                                                    Pembayaran Gagal
-                                                    @break
-                                                @default
-                                                    {{ ucfirst($order->status) }}
-                                            @endswitch
+                                            {{ $order->status === 'pending' ? 'Belum Bayar' : ($order->status === 'success' ? 'Berhasil' : 'Gagal') }}
                                         </span>
                                     </td>
                                     <td class="py-2 px-4 text-center">{{ $order->midtrans_order_id ?? '-' }}</td>
+                                    <td class="py-2 px-4 text-center">{{ $order->snap_token ?? 'Tidak tersedia' }}</td>
                                     <td class="py-2 px-4 space-y-1 text-center">
-                                        @if($order->status === 'pending' && $order->payment_url)
-                                            <a href="{{ $order->payment_url }}" 
+                                        @if($order->status === 'pending' && $order->snap_token)
+                                            <a href="#" onclick="payWithMidtrans('{{ $order->snap_token }}', {{ $order->id }})" 
                                                class="block bg-purple-600 hover:bg-purple-700 text-white font-semibold py-1.5 px-3 rounded-lg transition transform hover:scale-105 mb-1">
                                                 <i class="fas fa-credit-card mr-1"></i> Bayar
                                             </a>
+                                        @else
+                                            <span class="text-gray-500">Tidak dapat dibayar</span>
                                         @endif
-                                        
                                         @if(Route::has('customer.order.show'))
                                             <a href="{{ route('customer.order.show', $order->id) }}"
                                                class="block bg-blue-600 hover:bg-blue-700 text-white font-semibold py-1.5 px-3 rounded-lg transition transform hover:scale-105">
@@ -90,6 +90,7 @@
                                             <a href="{{ url('/customer/order/' . $order->id) }}"
                                                class="block bg-blue-600 hover:bg-blue-700 text-white font-semibold py-1.5 px-3 rounded-lg transition transform hover:scale-105">
                                                <i class="fas fa-eye mr-1"></i> Detail
+                                               {{ \Log::warning('Route customer.order.show not defined, using fallback URL', ['order_id' => $order->id, 'url' => url('/customer/order/' . $order->id)]) }}
                                             </a>
                                         @endif
                                     </td>
@@ -101,5 +102,40 @@
             </div>
         @endif
     </div>
+
+    <!-- Midtrans Snap Script -->
+    <script src="https://app.sandbox.midtrans.com/snap/snap.js" data-client-key="{{ env('MIDTRANS_CLIENT_KEY') }}"></script>
+    <script type="text/javascript">
+        document.addEventListener('DOMContentLoaded', function() {
+            const refreshButton = document.getElementById('refreshOrders');
+
+            function payWithMidtrans(snapToken, orderId) {
+                snap.pay(snapToken, {
+                    onSuccess: function(result) {
+                        alert('Pembayaran berhasil! Silakan segarkan halaman untuk melihat status terbaru.');
+                        window.location.reload(); // Segarkan halaman setelah pembayaran berhasil
+                    },
+                    onPending: function(result) {
+                        alert('Pembayaran menunggu konfirmasi. Silakan cek status pesanan nanti.');
+                        window.location.reload();
+                    },
+                    onError: function(result) {
+                        alert('Terjadi kesalahan saat pembayaran. Silakan coba lagi.');
+                        window.location.reload();
+                    },
+                    onClose: function() {
+                        alert('Pembayaran dibatalkan.');
+                        window.location.reload();
+                    }
+                });
+            }
+
+            if (refreshButton) {
+                refreshButton.addEventListener('click', function() {
+                    window.location.reload(); // Segarkan halaman secara manual
+                });
+            }
+        });
+    </script>
 </div>
 @endsection

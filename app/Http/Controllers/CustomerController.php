@@ -7,12 +7,22 @@ use App\Models\Customer;
 use App\Models\Order;
 use App\Models\Bundle;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Midtrans\Snap;
 use Midtrans\Config;
 use Midtrans\Notification;
 
 class CustomerController extends Controller
 {
+    public function __construct()
+    {
+        // Set konfigurasi Midtrans
+        Config::$serverKey = env('MIDTRANS_SERVER_KEY');
+        Config::$isProduction = false;
+        Config::$isSanitized = true;
+        Config::$is3ds = true;
+    }
+
     public function index()
     {
         $bundles = Bundle::select('id', 'nama_paket', 'isi_paket', 'deskripsi', 'harga', 'video_path')->get();
@@ -35,18 +45,61 @@ class CustomerController extends Controller
         return view('customer.order', compact('orders'));
     }
 
-    public function payment()
+    public function payment($orderId)
     {
         $order = Order::where('user_id', Auth::id())
+            ->where('id', $orderId)
             ->where('status', 'pending')
-            ->latest()
             ->first();
 
         if (!$order) {
-            return redirect()->route('customer.order')->with('warning', 'Tidak ada pesanan yang perlu dibayar.');
+            return redirect()->route('customer.order')->with('warning', 'Pesanan tidak ditemukan atau sudah dibayar.');
         }
 
         return view('customer.payment', compact('order'));
+    }
+
+    public function handleNotification(Request $request)
+    {
+        Config::$serverKey = env('MIDTRANS_SERVER_KEY'); // Pastikan server key diatur ulang di sini
+        $notification = new Notification();
+
+        $transactionStatus = $notification->transaction_status;
+        $fraudStatus = $notification->fraud_status;
+        $orderId = str_replace('ORDER-', '', $notification->order_id);
+        $paymentType = $notification->payment_type;
+        $transactionTime = $notification->transaction_time;
+
+        Log::info('Midtrans Notification Received', [
+            'order_id' => $orderId,
+            'transaction_status' => $transactionStatus,
+            'fraud_status' => $fraudStatus,
+            'payment_type' => $paymentType,
+            'transaction_time' => $transactionTime,
+        ]);
+
+        $order = Order::find($orderId);
+
+        if ($order) {
+            if ($transactionStatus == 'capture' && $fraudStatus == 'accept') {
+                $order->status = 'success';
+                $order->midtrans_transaction_time = $transactionTime;
+                Log::info('Order ' . $orderId . ' updated to success');
+            } elseif (in_array($transactionStatus, ['deny', 'cancel', 'expire', 'failure'])) {
+                $order->status = 'failed';
+                Log::info('Order ' . $orderId . ' updated to failed');
+            } else {
+                $order->status = 'pending';
+                Log::info('Order ' . $orderId . ' remains pending');
+            }
+            $order->save();
+
+            // Opsional: Kirim notifikasi ke pengguna (misalnya via email)
+        } else {
+            Log::warning('Order not found for notification', ['order_id' => $orderId]);
+        }
+
+        return response()->json(['status' => 'Notification handled']);
     }
 
     public function create()
@@ -125,35 +178,9 @@ class CustomerController extends Controller
 
     public function createOrder($bundleId)
     {
-        $bundle = Bundle::select('id', 'nama_paket', 'isi_paket', 'deskripsi', 'harga', 'video_path')->findOrFail($bundleId);
+        $bundle = Bundle::select('id', 'nama_paket', 'isi_paket', 'deskripsi', 'harga', 'video_path')
+            ->findOrFail($bundleId);
         return view('customer.order-create', compact('bundle'));
-    }
-
-    public function show($id)
-    {
-        \Log::info('Accessing order show page', ['order_id' => $id, 'user_id' => Auth::id()]);
-        $order = Order::with('bundle')->where('id', $id)->where('user_id', Auth::id())->firstOrFail();
-        return view('customer.order.show', compact('order'));
-    }
-
-    public function showPaymentPage($id)
-    {
-        $order = Order::with('bundle')->where('id', $id)->where('user_id', Auth::id())->firstOrFail();
-        return view('customer.payment', compact('order'));
-    }
-
-    public function handleCallback($orderId)
-    {
-        \Log::info('Handling Midtrans callback', ['order_id' => $orderId, 'user_id' => Auth::id()]);
-        $order = Order::where('id', $orderId)
-            ->where('user_id', Auth::id())
-            ->firstOrFail();
-
-        if ($order->status === 'success') {
-            return redirect()->route('customer.order')->with('success', 'Pembayaran berhasil! Pesanan Anda telah dikonfirmasi.');
-        }
-
-        return redirect()->route('customer.order')->with('warning', 'Pembayaran belum berhasil dikonfirmasi.');
     }
 
     public function storeOrder(Request $request)
@@ -170,12 +197,21 @@ class CustomerController extends Controller
             'notes' => 'nullable|string|max:1000',
         ]);
 
+        $existingOrder = Order::where('bundle_id', $request->bundle_id)
+            ->where('tanggal_acara', $request->tanggal_acara)
+            ->where('status', '!=', 'failed')
+            ->exists();
+
+        if ($existingOrder) {
+            return response()->json(['success' => false, 'message' => 'Paket ini sudah dipesan pada tanggal tersebut. Silakan pilih tanggal lain.'], 400);
+        }
+
         $bundle = Bundle::findOrFail($request->bundle_id);
         $totalHarga = $bundle->harga;
 
         $order = new Order();
         $order->bundle_id = $request->bundle_id;
-        $order->user_id = auth()->id();
+        $order->user_id = Auth::id();
         $order->nama_lengkap = $request->nama_lengkap;
         $order->email = $request->email;
         $order->no_telepon = $request->no_telepon;
@@ -188,99 +224,41 @@ class CustomerController extends Controller
         $order->status = 'pending';
         $order->save();
 
-        // Midtrans configuration
-        Config::$serverKey = config('midtrans.server_key');
-        Config::$isProduction = config('midtrans.is_production');
-        Config::$isSanitized = true;
-        Config::$is3ds = true;
-
-        // Generate callback URLs with fallbacks
-        try {
-            $callbackUrl = route('customer.payment.callback', $order->id);
-            \Log::info('Generated callback URL using route', ['url' => $callbackUrl, 'order_id' => $order->id]);
-        } catch (\Exception $e) {
-            \Log::warning('Route customer.payment.callback not found, using fallback URL', ['error' => $e->getMessage(), 'order_id' => $order->id]);
-            $callbackUrl = url('/customer/payment/callback/' . $order->id);
-            \Log::info('Fallback callback URL', ['url' => $callbackUrl, 'order_id' => $order->id]);
-        }
-
-        try {
-            $notificationUrl = route('midtrans.notification');
-            \Log::info('Generated notification URL using route', ['url' => $notificationUrl, 'order_id' => $order->id]);
-        } catch (\Exception $e) {
-            \Log::warning('Route midtrans.notification not found, using fallback URL', ['error' => $e->getMessage(), 'order_id' => $order->id]);
-            $notificationUrl = url('/midtrans/notification');
-            \Log::info('Fallback notification URL', ['url' => $notificationUrl, 'order_id' => $order->id]);
-        }
-
         $params = [
             'transaction_details' => [
                 'order_id' => 'ORDER-' . $order->id,
                 'gross_amount' => $order->total_harga,
             ],
             'customer_details' => [
-                'first_name' => $order->nama_lengkap,
-                'email' => $order->email,
+                'first_name' => Auth::user()->name,
+                'email' => Auth::user()->email,
                 'phone' => $order->no_telepon,
                 'billing_address' => [
                     'address' => $order->alamat,
                 ],
             ],
-            'enabled_payments' => ['gopay', 'bank_transfer', 'shopeepay'],
+            'enabled_payments' => ['gopay', 'bank_transfer', 'shopeepay', 'credit_card'],
             'callbacks' => [
-                'finish' => $callbackUrl,
-                'notification' => $notificationUrl,
+                'finish' => route('customer.payment', $order->id),
+                'notification' => route('midtrans.notification'),
             ],
         ];
 
         try {
-            $response = Snap::createTransaction($params);
-            $order->payment_url = $response->redirect_url;
-            $order->midtrans_order_id = 'ORDER-' . $order->id;
+            $snapToken = Snap::getSnapToken($params);
+            $order->snap_token = $snapToken;
             $order->save();
 
-            \Log::info('Midtrans transaction created', ['order_id' => $order->id, 'redirect_url' => $response->redirect_url]);
-            return redirect($response->redirect_url);
+            Log::info('Snap token generated for order ' . $order->id . ': ' . $snapToken);
+
+            return response()->json([
+                'success' => true,
+                'order_id' => $order->id,
+                'snap_token' => $snapToken
+            ]);
         } catch (\Exception $e) {
-            \Log::error('Midtrans transaction error: ' . $e->getMessage());
-            return back()->with('error', 'Gagal membuat transaksi: ' . $e->getMessage());
-        }
-    }
-
-    public function handleMidtransNotification(Request $request)
-    {
-        \Log::info('Received Midtrans notification', ['request' => $request->all()]);
-        Config::$serverKey = config('midtrans.server_key');
-        Config::$isProduction = config('midtrans.is_production');
-
-        try {
-            $notif = new Notification();
-            $transaction = $notif->transaction_status;
-            $type = $notif->payment_type;
-            $orderId = $notif->order_id;
-            $fraud = $notif->fraud_status;
-
-            // Extract actual order ID (remove 'ORDER-' prefix)
-            $actualOrderId = str_replace('ORDER-', '', $orderId);
-            $order = Order::findOrFail($actualOrderId);
-
-            if ($transaction == 'capture' && $fraud == 'accept') {
-                $order->status = 'success';
-            } elseif ($transaction == 'settlement') {
-                $order->status = 'success';
-            } elseif ($transaction == 'pending') {
-                $order->status = 'pending';
-            } elseif (in_array($transaction, ['deny', 'expire', 'cancel'])) {
-                $order->status = 'failed';
-            }
-
-            $order->save();
-
-            \Log::info('Midtrans notification processed', ['order_id' => $actualOrderId, 'status' => $order->status]);
-            return response()->json(['status' => 'success']);
-        } catch (\Exception $e) {
-            \Log::error('Midtrans notification error: ' . $e->getMessage());
-            return response()->json(['status' => 'error'], 400);
+            Log::error('Midtrans error: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Gagal membuat transaksi: ' . $e->getMessage()], 500);
         }
     }
 }

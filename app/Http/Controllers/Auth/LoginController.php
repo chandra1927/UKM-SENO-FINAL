@@ -36,7 +36,7 @@ class LoginController extends Controller
             if ($user->role === 'customer') {
                 return redirect()->route('customer.index');
             } elseif ($user->role === 'anggota') {
-                return redirect()->route('anggota.index');
+                return redirect()->route('anggota.dashboard');
             }
 
             Auth::logout();

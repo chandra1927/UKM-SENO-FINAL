@@ -305,7 +305,11 @@ Route::post('/midtrans/notification', [CustomerController::class, 'handleMidtran
 // Midtrans notification route (outside auth middleware)
 Route::post('/midtrans/notification', [CustomerController::class, 'handleMidtransNotification'])->name('midtrans.notification');
 });
+Route::post('/midtrans/notification', [PaymentController::class, 'handleNotification']);
+Route::get('/midtrans/callback', [PaymentController::class, 'callback']);
 
+// Route untuk manual check payment status
+Route::post('/customer/order/{id}/check-status', [CustomerController::class, 'checkPaymentStatus'])->name('customer.order.check-status')->middleware('auth');
 
 });
 
@@ -314,4 +318,11 @@ Route::fallback(function () {
     return redirect()->route('customer.order')->with('error', 'Halaman tidak ditemukan.');
 });
 
+
+Route::post('/midtrans/notification', [PaymentController::class, 'handleNotification']);
+Route::get('/midtrans/callback', [PaymentController::class, 'callback']);
+
+// Route untuk manual check payment status
+Route::post('/customer/order/{id}/check-status', [CustomerController::class, 'checkPaymentStatus'])->name('customer.order.check-status')->middleware('auth');
+Route::post('/midtrans/notification', [CustomerController::class, 'handleNotification'])->name('midtrans.notification');
 
