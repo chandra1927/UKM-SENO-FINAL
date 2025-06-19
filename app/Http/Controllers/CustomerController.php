@@ -18,9 +18,15 @@ class CustomerController extends Controller
     {
         // Set konfigurasi Midtrans
         Config::$serverKey = env('MIDTRANS_SERVER_KEY');
-        Config::$isProduction = false;
+        Config::$isProduction = false; // Gunakan true untuk production
         Config::$isSanitized = true;
         Config::$is3ds = true;
+
+        // Validasi apakah server key ada
+        if (empty(Config::$serverKey)) {
+            Log::error('MIDTRANS_SERVER_KEY is not set in .env');
+            throw new \Exception('Midtrans server key is not configured. Please check your .env file.');
+        }
     }
 
     public function index()
@@ -39,9 +45,23 @@ class CustomerController extends Controller
         return view('customer.history', compact('orders'));
     }
 
-    public function order()
+    public function order(Request $request)
     {
-        $orders = Order::where('user_id', Auth::id())->get();
+        $query = Order::where('user_id', Auth::id());
+
+        // Pencarian berdasarkan kata kunci
+        if ($request->has('search')) {
+            $search = $request->input('search');
+            $query->where(function ($q) use ($search) {
+                $q->where('nama_lengkap', 'like', "%{$search}%")
+                  ->orWhere('status', 'like', "%{$search}%")
+                  ->orWhere('id', 'like', "%{$search}%");
+            });
+        }
+
+        // Pagination
+        $orders = $query->latest()->paginate(5); // 5 item per halaman, sesuaikan sesuai kebutuhan
+
         return view('customer.order', compact('orders'));
     }
 
@@ -61,7 +81,7 @@ class CustomerController extends Controller
 
     public function handleNotification(Request $request)
     {
-        Config::$serverKey = env('MIDTRANS_SERVER_KEY'); // Pastikan server key diatur ulang di sini
+        Config::$serverKey = env('MIDTRANS_SERVER_KEY');
         $notification = new Notification();
 
         $transactionStatus = $notification->transaction_status;
@@ -93,8 +113,6 @@ class CustomerController extends Controller
                 Log::info('Order ' . $orderId . ' remains pending');
             }
             $order->save();
-
-            // Opsional: Kirim notifikasi ke pengguna (misalnya via email)
         } else {
             Log::warning('Order not found for notification', ['order_id' => $orderId]);
         }
@@ -180,71 +198,87 @@ class CustomerController extends Controller
     {
         $bundle = Bundle::select('id', 'nama_paket', 'isi_paket', 'deskripsi', 'harga', 'video_path')
             ->findOrFail($bundleId);
-        return view('customer.order-create', compact('bundle'));
+
+        // Ambil semua tanggal yang sudah dipesan untuk bundle ini
+        $bookedDates = Order::where('bundle_id', $bundleId)
+            ->where('status', '!=', 'failed') // Hanya tanggal yang belum gagal
+            ->pluck('tanggal_acara')
+            ->toArray();
+
+        return view('customer.order-create', compact('bundle', 'bookedDates'));
     }
 
     public function storeOrder(Request $request)
     {
-        $request->validate([
-            'bundle_id' => 'required|exists:bundles,id',
-            'nama_lengkap' => 'required|string|max:255',
-            'email' => 'required|email|max:255',
-            'no_telepon' => 'required|string|max:20',
-            'alamat' => 'required|string|max:500',
-            'tanggal_acara' => 'required|date|after_or_equal:today',
-            'waktu_acara' => 'required|date_format:H:i',
-            'lokasi_acara' => 'required|string|max:500',
-            'notes' => 'nullable|string|max:1000',
-        ]);
-
-        $existingOrder = Order::where('bundle_id', $request->bundle_id)
-            ->where('tanggal_acara', $request->tanggal_acara)
-            ->where('status', '!=', 'failed')
-            ->exists();
-
-        if ($existingOrder) {
-            return response()->json(['success' => false, 'message' => 'Paket ini sudah dipesan pada tanggal tersebut. Silakan pilih tanggal lain.'], 400);
-        }
-
-        $bundle = Bundle::findOrFail($request->bundle_id);
-        $totalHarga = $bundle->harga;
-
-        $order = new Order();
-        $order->bundle_id = $request->bundle_id;
-        $order->user_id = Auth::id();
-        $order->nama_lengkap = $request->nama_lengkap;
-        $order->email = $request->email;
-        $order->no_telepon = $request->no_telepon;
-        $order->alamat = $request->alamat;
-        $order->tanggal_acara = $request->tanggal_acara;
-        $order->waktu_acara = $request->waktu_acara;
-        $order->lokasi_acara = $request->lokasi_acara;
-        $order->notes = $request->notes;
-        $order->total_harga = $totalHarga;
-        $order->status = 'pending';
-        $order->save();
-
-        $params = [
-            'transaction_details' => [
-                'order_id' => 'ORDER-' . $order->id,
-                'gross_amount' => $order->total_harga,
-            ],
-            'customer_details' => [
-                'first_name' => Auth::user()->name,
-                'email' => Auth::user()->email,
-                'phone' => $order->no_telepon,
-                'billing_address' => [
-                    'address' => $order->alamat,
-                ],
-            ],
-            'enabled_payments' => ['gopay', 'bank_transfer', 'shopeepay', 'credit_card'],
-            'callbacks' => [
-                'finish' => route('customer.payment', $order->id),
-                'notification' => route('midtrans.notification'),
-            ],
-        ];
+        // Log input untuk debugging
+        Log::info('storeOrder Request Data', $request->all());
 
         try {
+            // Validasi input
+            $validatedData = $request->validate([
+                'bundle_id' => 'required|exists:bundles,id',
+                'nama_lengkap' => 'required|string|max:255',
+                'email' => 'required|email|max:255',
+                'no_telepon' => 'required|string|max:20',
+                'alamat' => 'required|string|max:500',
+                'tanggal_acara' => 'required|date|after_or_equal:today',
+                'waktu_acara' => 'required|date_format:H:i',
+                'lokasi_acara' => 'required|string|max:500',
+                'notes' => 'nullable|string|max:1000',
+            ]);
+
+            // Periksa pesanan yang sudah ada untuk semua pengguna
+            $existingOrder = Order::where('bundle_id', $request->bundle_id)
+                ->where('tanggal_acara', $request->tanggal_acara)
+                ->where('status', '!=', 'failed') // Hanya tanggal yang belum gagal
+                ->exists();
+
+            if ($existingOrder) {
+                return response()->json(['success' => false, 'message' => 'Tanggal ini sudah dipesan oleh pengguna lain. Silakan pilih tanggal lain.'], 400);
+            }
+
+            // Ambil data bundle
+            $bundle = Bundle::findOrFail($request->bundle_id);
+            $totalHarga = $bundle->harga;
+
+            // Simpan pesanan
+            $order = new Order();
+            $order->bundle_id = $request->bundle_id;
+            $order->user_id = Auth::id();
+            $order->nama_lengkap = $request->nama_lengkap;
+            $order->email = $request->email;
+            $order->no_telepon = $request->no_telepon;
+            $order->alamat = $request->alamat;
+            $order->tanggal_acara = $request->tanggal_acara;
+            $order->waktu_acara = $request->waktu_acara;
+            $order->lokasi_acara = $request->lokasi_acara;
+            $order->notes = $request->notes;
+            $order->total_harga = $totalHarga;
+            $order->status = 'pending';
+            $order->save();
+
+            // Konfigurasi Midtrans
+            $params = [
+                'transaction_details' => [
+                    'order_id' => 'ORDER-' . $order->id,
+                    'gross_amount' => $order->total_harga,
+                ],
+                'customer_details' => [
+                    'first_name' => Auth::user()->name,
+                    'email' => Auth::user()->email,
+                    'phone' => $order->no_telepon,
+                    'billing_address' => [
+                        'address' => $order->alamat,
+                    ],
+                ],
+                'enabled_payments' => ['gopay', 'bank_transfer', 'shopeepay', 'credit_card'],
+                'callbacks' => [
+                    'finish' => route('customer.payment', $order->id),
+                    'notification' => route('midtrans.notification'),
+                ],
+            ];
+
+            // Dapatkan Snap Token
             $snapToken = Snap::getSnapToken($params);
             $order->snap_token = $snapToken;
             $order->save();
@@ -256,9 +290,12 @@ class CustomerController extends Controller
                 'order_id' => $order->id,
                 'snap_token' => $snapToken
             ]);
+        } catch (\ValidationException $e) {
+            Log::error('Validation Error in storeOrder', ['errors' => $e->errors()]);
+            return response()->json(['success' => false, 'message' => 'Validasi gagal: ' . json_encode($e->errors())], 400);
         } catch (\Exception $e) {
-            Log::error('Midtrans error: ' . $e->getMessage());
-            return response()->json(['success' => false, 'message' => 'Gagal membuat transaksi: ' . $e->getMessage()], 500);
+            Log::error('Error in storeOrder: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            return response()->json(['success' => false, 'message' => 'Terjadi kesalahan: ' . $e->getMessage()], 500);
         }
     }
 }

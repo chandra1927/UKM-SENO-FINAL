@@ -22,6 +22,16 @@
             </div>
         @endif
 
+        <!-- Search Input -->
+        <div class="mb-6">
+            <form action="{{ route('customer.order') }}" method="GET" class="flex items-center">
+                <input type="text" name="search" value="{{ request('search') }}" placeholder="Cari berdasarkan nama, status, atau ID..." class="w-full md:w-1/2 border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-purple-400">
+                <button type="submit" class="ml-2 bg-purple-600 hover:bg-purple-700 text-white font-semibold py-3 px-4 rounded-lg transition transform hover:scale-105">
+                    <i class="fas fa-search"></i>
+                </button>
+            </form>
+        </div>
+
         @if($orders->isEmpty())
             <div class="bg-purple-50 p-4 rounded-lg text-center">
                 <p class="text-purple-700 font-semibold">Belum ada pesanan.</p>
@@ -98,6 +108,19 @@
                             @endforeach
                         </tbody>
                     </table>
+                </div>
+
+                <!-- Custom Pagination with Previous and Next Buttons -->
+                <div class="mt-6 flex justify-between items-center">
+                    <a href="{{ $orders->previousPageUrl() }}" 
+                       class="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-4 rounded-lg transition transform hover:scale-105 {{ !$orders->onFirstPage() ? '' : 'opacity-50 cursor-not-allowed' }}">
+                        <i class="fas fa-chevron-left mr-2"></i> Sebelumnya
+                    </a>
+                    <span class="text-gray-700">Halaman {{ $orders->currentPage() }} dari {{ $orders->lastPage() }}</span>
+                    <a href="{{ $orders->nextPageUrl() }}" 
+                       class="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-4 rounded-lg transition transform hover:scale-105 {{ !$orders->hasMorePages() ? 'opacity-50 cursor-not-allowed' : '' }}">
+                        Berikutnya <i class="fas fa-chevron-right ml-2"></i>
+                    </a>
                 </div>
             </div>
         @endif

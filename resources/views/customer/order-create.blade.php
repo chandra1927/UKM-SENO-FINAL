@@ -128,23 +128,50 @@
         const payButton = document.getElementById('payButton');
         const orderIdDisplay = document.getElementById('orderIdDisplay');
         const checkoutError = document.getElementById('checkoutError');
+        const tanggalAcaraInput = document.getElementById('tanggal_acara');
         let snapToken = null;
+
+        // Data tanggal yang sudah dipesan dari server
+        const bookedDates = @json($bookedDates ?? []);
+
+        // Validasi tanggal di frontend
+        tanggalAcaraInput.addEventListener('change', function() {
+            const selectedDate = this.value;
+            if (bookedDates.includes(selectedDate)) {
+                this.setCustomValidity('Tanggal ini sudah dipesan oleh pengguna lain. Silakan pilih tanggal lain.');
+                document.getElementById('tanggal_acara_error').textContent = 'Tanggal ini sudah dipesan oleh pengguna lain.';
+                document.getElementById('tanggal_acara_error').classList.remove('hidden');
+            } else {
+                this.setCustomValidity('');
+                document.getElementById('tanggal_acara_error').classList.add('hidden');
+            }
+        });
 
         if (orderForm) {
             orderForm.addEventListener('submit', function(e) {
                 e.preventDefault();
 
+                if (bookedDates.includes(tanggalAcaraInput.value)) {
+                    checkoutError.textContent = 'Tanggal ini sudah dipesan oleh pengguna lain. Silakan pilih tanggal lain.';
+                    checkoutError.classList.remove('hidden');
+                    return;
+                }
+
                 const formData = new FormData(orderForm);
+                formData.append('_token', '{{ csrf_token() }}'); // Pastikan CSRF token dikirim
+
                 fetch('{{ route('customer.order.store') }}', {
                     method: 'POST',
                     body: formData,
                     headers: {
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                        'Accept': 'application/json',
                     }
                 })
                 .then(response => {
                     if (!response.ok) {
-                        throw new Error('Network response was not ok');
+                        return response.json().then(errorData => {
+                            throw new Error(errorData.message || 'Network response was not ok: ' + response.statusText);
+                        });
                     }
                     return response.json();
                 })
@@ -161,7 +188,7 @@
                 })
                 .catch(error => {
                     console.error('Error:', error);
-                    checkoutError.textContent = 'Terjadi kesalahan saat memproses pesanan. Silakan coba lagi.';
+                    checkoutError.textContent = 'Terjadi kesalahan: ' + error.message;
                     checkoutError.classList.remove('hidden');
                 });
             });
