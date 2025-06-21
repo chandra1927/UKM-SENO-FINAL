@@ -80,5 +80,43 @@ class PaymentController extends Controller
         
         return back()->with('error', 'Gagal mengecek status pembayaran. Silakan coba lagi nanti.');
     }
+    
+}
+public function handleCallback(Request $request)
+{
+    $notification = new Notification();
+
+    $transaction = $notification->transaction_status;
+    $type = $notification->payment_type;
+    $orderId = $notification->order_id;
+    $fraud = $notification->fraud_status;
+
+    // Cari pesanan berdasarkan order_id dari midtrans
+    $order = Order::where('midtrans_order_id', $orderId)->first();
+
+    if (!$order) {
+        Log::error("Order not found: " . $orderId);
+        return response()->json(['message' => 'Order not found'], 404);
+    }
+
+    // Ubah status di database
+    if ($transaction == 'capture') {
+        if ($type == 'credit_card') {
+            if ($fraud == 'challenge') {
+                $order->status = 'pending';
+            } else {
+                $order->status = 'success';
+            }
+        }
+    } else if ($transaction == 'settlement') {
+        $order->status = 'success';
+    } else if ($transaction == 'pending') {
+        $order->status = 'pending';
+    } else if ($transaction == 'deny' || $transaction == 'cancel' || $transaction == 'expire') {
+        $order->status = 'failed';
+    }
+
+    $order->save();
+    return response()->json(['message' => 'Callback handled'], 200);
 }
 }

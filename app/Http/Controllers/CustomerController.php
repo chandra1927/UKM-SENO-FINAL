@@ -6,8 +6,10 @@ use Illuminate\Http\Request;
 use App\Models\Customer;
 use App\Models\Order;
 use App\Models\Bundle;
+use App\Models\FinancialTransaction;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB; // Tambahkan untuk Query Builder
 use Midtrans\Snap;
 use Midtrans\Config;
 use Midtrans\Notification;
@@ -89,13 +91,15 @@ class CustomerController extends Controller
         $orderId = str_replace('ORDER-', '', $notification->order_id);
         $paymentType = $notification->payment_type;
         $transactionTime = $notification->transaction_time;
+        $amount = $notification->gross_amount;
 
         Log::info('Midtrans Notification Received', [
             'order_id' => $orderId,
             'transaction_status' => $transactionStatus,
-            'fraud_status' => $fraudStatus,
+            'fraudStatus' => $fraudStatus,
             'payment_type' => $paymentType,
             'transaction_time' => $transactionTime,
+            'amount' => $amount,
         ]);
 
         $order = Order::find($orderId);
@@ -104,15 +108,28 @@ class CustomerController extends Controller
             if ($transactionStatus == 'capture' && $fraudStatus == 'accept') {
                 $order->status = 'success';
                 $order->midtrans_transaction_time = $transactionTime;
-                Log::info('Order ' . $orderId . ' updated to success');
+                $order->save();
+
+                // Catat transaksi keuangan sebagai pemasukan
+                FinancialTransaction::create([
+                    'user_id' => 1, // Ganti dengan ID pengguna keuangan atau logika otomatis
+                    'date' => now()->toDateString(),
+                    'description' => 'Pembayaran Pesanan #' . $order->id,
+                    'type' => 'pemasukan',
+                    'amount' => $amount,
+                    'midtrans_transaction_id' => $notification->order_id,
+                ]);
+
+                Log::info('Order ' . $orderId . ' updated to success and recorded as financial transaction');
             } elseif (in_array($transactionStatus, ['deny', 'cancel', 'expire', 'failure'])) {
-                $order->status = 'failed';
-                Log::info('Order ' . $orderId . ' updated to failed');
+                $order->status = 'cancel';
+                $order->save();
+                Log::info('Order ' . $orderId . ' updated to cancel');
             } else {
                 $order->status = 'pending';
+                $order->save();
                 Log::info('Order ' . $orderId . ' remains pending');
             }
-            $order->save();
         } else {
             Log::warning('Order not found for notification', ['order_id' => $orderId]);
         }
@@ -297,5 +314,65 @@ class CustomerController extends Controller
             Log::error('Error in storeOrder: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
             return response()->json(['success' => false, 'message' => 'Terjadi kesalahan: ' . $e->getMessage()], 500);
         }
+    }
+
+    public function callback(Request $request)
+    {
+        $serverKey = config('midtrans.server_key');
+        $hashed = hash('sha512', $request->order_id . $request->status_code . $request->gross_amount . $serverKey);
+
+        if ($hashed === $request->signature_key) {
+            if (in_array($request->transaction_status, ['capture', 'settlement'])) {
+                $order = Order::where('id', str_replace('ORDER-', '', $request->order_id))->first();
+
+                if ($order) {
+                    $order->update(['status' => 'success']);
+                    return response()->json(['message' => 'Payment status updated to success.']);
+                }
+            } elseif (in_array($request->transaction_status, ['deny', 'cancel', 'expire', 'failure'])) {
+                $order = Order::where('id', str_replace('ORDER-', '', $request->order_id))->first();
+
+                if ($order) {
+                    $order->update(['status' => 'cancel']);
+                    return response()->json(['message' => 'Payment status updated to cancel.']);
+                }
+            }
+        }
+
+        return response()->json(['message' => 'Invalid signature or transaction status.'], 400);
+    }
+
+    public function handleMidtransNotification(Request $request)
+    {
+        echo 'test notification handler';
+        $json_result = file_get_contents('php://input');
+        $result = json_decode($json_result, true);
+
+        if ($result && isset($result['order_id']) && isset($result['status_code'])) {
+            $orderId = str_replace('ORDER-', '', $result['order_id']);
+            $data = [
+                'status_code' => $result['status_code']
+            ];
+
+            // Perbarui status di tabel orders berdasarkan status_code
+            $order = Order::find($orderId);
+            if ($order) {
+                if ($result['status_code'] == 200) {
+                    $order->status = 'success';
+                    $order->save();
+                    Log::info('Order ' . $orderId . ' updated to success via notification');
+                } else {
+                    $order->status = 'pending';
+                    $order->save();
+                    Log::info('Order ' . $orderId . ' remains pending via notification');
+                }
+            } else {
+                Log::warning('Order not found for notification', ['order_id' => $orderId]);
+            }
+
+            return response()->json(['status' => 'Notification handled']);
+        }
+
+        return response()->json(['message' => 'Invalid notification data'], 400);
     }
 }

@@ -10,6 +10,7 @@ use App\Http\Controllers\KeuanganController;
 use App\Http\Controllers\AnggotaJadwalController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\MidtransController;
+use App\Http\Controllers\PaymentController;
 
 
 /*
@@ -306,7 +307,7 @@ Route::post('/midtrans/notification', [CustomerController::class, 'handleMidtran
 Route::post('/midtrans/notification', [CustomerController::class, 'handleMidtransNotification'])->name('midtrans.notification');
 });
 Route::post('/midtrans/notification', [PaymentController::class, 'handleNotification']);
-Route::get('/midtrans/callback', [PaymentController::class, 'callback']);
+
 
 // Route untuk manual check payment status
 Route::post('/customer/order/{id}/check-status', [CustomerController::class, 'checkPaymentStatus'])->name('customer.order.check-status')->middleware('auth');
@@ -319,10 +320,22 @@ Route::fallback(function () {
 });
 
 
-Route::post('/midtrans/notification', [PaymentController::class, 'handleNotification']);
-Route::get('/midtrans/callback', [PaymentController::class, 'callback']);
+
 
 // Route untuk manual check payment status
 Route::post('/customer/order/{id}/check-status', [CustomerController::class, 'checkPaymentStatus'])->name('customer.order.check-status')->middleware('auth');
 Route::post('/midtrans/notification', [CustomerController::class, 'handleNotification'])->name('midtrans.notification');
+
+Route::get('/order/success', [CustomerController::class, 'success']);
+Route::get('/order/pending', [CustomerController::class, 'pending']);
+Route::get('/order/failed', [CustomerController::class, 'failed']);
+
+Route::middleware(['auth', 'role:keuangan'])->group(function () {
+    Route::get('/keuangan/dashboard', [KeuanganController::class, 'dashboard'])->name('keuangan.dashboard');
+    Route::get('/keuangan/rekap-transaksi', [KeuanganController::class, 'rekapTransaksi'])->name('keuangan.rekap-transaksi');
+    Route::post('/midtrans/notification', [KeuanganController::class, 'handleMidtransNotification'])->name('midtrans.notification');
+});
+Route::post('/midtrans-callback', [CustomerController::class, 'handleNotification'])->name('midtrans.notification');
+Route::post('/midtrans/notification', [CustomerController::class, 'handleMidtransNotification'])->name('midtrans.notification');
+
 

@@ -52,6 +52,7 @@
                         <thead>
                             <tr class="bg-purple-600 text-white">
                                 <th class="py-3 px-4 text-center font-semibold">ID</th>
+                                <th class="py-3 px-4 text-center font-semibold">Order ID</th> <!-- Tambah kolom Order ID -->
                                 <th class="py-3 px-4 text-center font-semibold">Bundle</th>
                                 <th class="py-3 px-4 text-center font-semibold">Total Harga</th>
                                 <th class="py-3 px-4 text-center font-semibold">Nama Lengkap</th>
@@ -66,6 +67,7 @@
                             @foreach($orders as $order)
                                 <tr class="border-b hover:bg-purple-50">
                                     <td class="py-2 px-4 text-center">{{ $order->id }}</td>
+                                    <td class="py-2 px-4 text-center">{{ $order->order_id ?? '-' }}</td> <!-- Tampilkan order_id -->
                                     <td class="py-2 px-4 text-center">{{ $order->bundle->nama_paket ?? 'Bundle Tidak Ditemukan' }}</td>
                                     <td class="py-2 px-4 text-center">Rp {{ number_format($order->total_harga, 0, ',', '.') }}</td>
                                     <td class="py-2 px-4 text-center">{{ $order->nama_lengkap ?? '-' }}</td>
@@ -76,8 +78,10 @@
                                                 ? 'bg-yellow-100 text-yellow-700' 
                                                 : ($order->status === 'success' 
                                                     ? 'bg-green-100 text-green-700' 
-                                                    : 'bg-red-100 text-red-700') }}">
-                                            {{ $order->status === 'pending' ? 'Belum Bayar' : ($order->status === 'success' ? 'Berhasil' : 'Gagal') }}
+                                                    : ($order->status === 'cancel' 
+                                                        ? 'bg-red-100 text-red-700' 
+                                                        : 'bg-gray-100 text-gray-700')) }}">
+                                            {{ $order->status === 'pending' ? 'Belum Bayar' : ($order->status === 'success' ? 'Berhasil' : ($order->status === 'cancel' ? 'Dibatalkan' : 'Tidak Diketahui')) }}
                                         </span>
                                     </td>
                                     <td class="py-2 px-4 text-center">{{ $order->midtrans_order_id ?? '-' }}</td>
